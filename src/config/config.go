@@ -11,8 +11,9 @@ type Configuration struct {
 }
 
 type AppConfig struct {
-	Host string `json:"host"`
-	Port string `json:"port"`
+	Host      string `json:"host"`
+	Port      string `json:"port"`
+	SecretKey string `json:"secretkey"`
 }
 
 type DatabaseConfig struct {

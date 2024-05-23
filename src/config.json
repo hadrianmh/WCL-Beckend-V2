@@ -2,7 +2,8 @@
     "app" : {
         "__host": "host.docker.internal",
         "host": "localhost",
-        "port": "8082"
+        "port": "8082",
+        "secretkey": "33b9b3de94a42d19f47df7021954eaa8"
     },
     "database": {
         "__host": "host.docker.internal",
