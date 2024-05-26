@@ -11,9 +11,12 @@ type Configuration struct {
 }
 
 type AppConfig struct {
-	Host      string `json:"host"`
-	Port      string `json:"port"`
-	SecretKey string `json:"secretkey"`
+	Host            string `json:"host"`
+	Port            string `json:"port"`
+	JWTSecretKey    string `json:"jwtsecretkey"`
+	JWTRefSecretKey string `json:"jwtrefsecretkey"`
+	JWTtokenexp     int    `json:"jwt_token_exp_minutes"`
+	JWTreftokenexp  int    `json:"jwt_reftoken_exp_days"`
 }
 
 type DatabaseConfig struct {

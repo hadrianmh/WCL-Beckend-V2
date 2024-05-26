@@ -3,7 +3,10 @@
         "__host": "host.docker.internal",
         "host": "localhost",
         "port": "8082",
-        "secretkey": "33b9b3de94a42d19f47df7021954eaa8"
+        "jwtsecretkey": "33b9b3de94a42d19f47df7021954eaa8",
+        "jwtrefsecretkey": "dc7d98009d61ac52e4d1b64de55b7165",
+        "jwt_token_exp_minutes" : 60,
+        "jwt_reftoken_exp_days": 1
     },
     "database": {
         "__host": "host.docker.internal",

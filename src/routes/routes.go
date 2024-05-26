@@ -2,6 +2,7 @@ package routes
 
 import (
 	"backend/controllers"
+	"backend/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -9,9 +10,18 @@ import (
 func InitRoutes(app *gin.Engine) {
 	route := app
 
-	ApiV1Group := route.Group("/api/v1")
+	// General v1
+	ApiV1 := route.Group("/api/v1")
+	ApiV1.GET("/", controllers.Home)
+	ApiV1.GET("/ping", controllers.Ping)
+	ApiV1.POST("/auth", controllers.Auth)
 
-	ApiV1Group.GET("/", controllers.Home)
-	ApiV1Group.GET("/ping", controllers.Ping)
-	ApiV1Group.POST("/auth", controllers.Auth)
+	// Dashboard v1
+	ApiV1Dashboard := route.Group("api/v1/dashboard")
+	ApiV1Dashboard.Use(utils.AuthenticateJWT())
+	{
+		ApiV1Dashboard.GET("", controllers.Dashboard)
+
+	}
+
 }

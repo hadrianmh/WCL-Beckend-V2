@@ -3,7 +3,6 @@ package controllers
 import (
 	"backend/adapters"
 	"backend/services"
-	"backend/utils"
 	"bytes"
 	"io/ioutil"
 	"net/http"
@@ -12,44 +11,57 @@ import (
 )
 
 type BodyRequest struct {
-	Action string `json:"action" binding:"required"`
-	Email  string `json:"email" binding:"required"`
-	Pwd    string `json:"pwd"`
+	Action        string `json:"action" binding:"required"`
+	Email         string `json:"email" binding:"required"`
+	Password      string `json:"password"`
+	ResfreshToken string `json:"refresh_token"`
 }
 
 func Home(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{
-		"code":    200,
-		"message": "Welcome to WCL microservices."})
+		"code":   200,
+		"status": "success",
+		"response": gin.H{
+			"message": "Welcome to WCL microservices."}})
 }
 
 func Ping(ctx *gin.Context) {
-	_, err := adapters.NewSql()
+	ping, err := adapters.NewSql()
 	if err != nil {
 		ctx.JSON(500, gin.H{
-			"code":    500,
-			"message": err})
+			"code":   500,
+			"status": "error",
+			"response": gin.H{
+				"message": err.Error()}})
 		return
 	}
 
+	defer ping.Connection.Close()
+
 	ctx.JSON(200, gin.H{
-		"code":    200,
-		"message": "Successfully connected and pinged the database!"})
+		"code":   200,
+		"status": "success",
+		"response": gin.H{
+			"message": "Pinged the database!"}})
 }
 
 func Auth(ctx *gin.Context) {
 	body, err := ioutil.ReadAll(ctx.Request.Body)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    http.StatusBadRequest,
-			"message": "Bad Request"})
+			"code":   http.StatusBadRequest,
+			"status": "error",
+			"response": gin.H{
+				"message": "Bad Request"}})
 		return
 	}
 
 	if len(body) < 1 {
 		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    http.StatusBadRequest,
-			"message": "Bad Request"})
+			"code":   http.StatusBadRequest,
+			"status": "error",
+			"response": gin.H{
+				"message": "Bad Request"}})
 		return
 	}
 
@@ -59,20 +71,33 @@ func Auth(ctx *gin.Context) {
 	var BodyReq BodyRequest
 	if err := ctx.ShouldBindJSON(&BodyReq); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    http.StatusBadRequest,
-			"message": "Bad Request"})
+			"code":   http.StatusBadRequest,
+			"status": "error",
+			"response": gin.H{
+				"message": err.Error()}})
 		return
 	}
 
-	authCheck, err := services.Auth(utils.Ucfirst(utils.StrReplaceAll(BodyReq.Action, "/", "")))
+	authCheck, err := services.Auth(BodyReq.Action, BodyReq.Email, BodyReq.Password, BodyReq.ResfreshToken)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    http.StatusBadRequest,
-			"message": err.Error()})
+			"code":   http.StatusBadRequest,
+			"status": "error",
+			"response": gin.H{
+				"message": err.Error()}})
 		return
 	}
 
 	ctx.JSON(200, gin.H{
-		"code":    200,
-		"message": authCheck})
+		"code":     200,
+		"status":   "success",
+		"response": authCheck})
+}
+
+func Dashboard(ctx *gin.Context) {
+	ctx.JSON(200, gin.H{
+		"code":   200,
+		"status": "success",
+		"response": gin.H{
+			"message": "Welcome to WCL Dashboard."}})
 }
