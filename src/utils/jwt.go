@@ -42,17 +42,17 @@ func GetSecretKey() error {
 }
 
 // GenerateTokens generates a new access and refresh token for a given username
-func GenerateTokens(uniqid int, username string, name string, role string) (Tokens, error) {
+func GenerateTokens(uniqid int, username string, name string, role string, status string, account string, picture string) (Tokens, error) {
 	if err := GetSecretKey(); err != nil {
 		return Tokens{}, err
 	}
 
-	accessToken, err := createJWT(uniqid, username, name, role, JWTSecretKey, time.Minute*time.Duration(JWTtokenEXP))
+	accessToken, err := createJWT(uniqid, username, name, role, status, account, picture, JWTSecretKey, time.Minute*time.Duration(JWTtokenEXP))
 	if err != nil {
 		return Tokens{}, err
 	}
 
-	refreshToken, err := createJWT(uniqid, username, name, role, JWTRefSecretKey, time.Hour*24*time.Duration(JWTreftokenEXP))
+	refreshToken, err := createJWT(uniqid, username, name, role, status, account, picture, JWTRefSecretKey, time.Hour*24*time.Duration(JWTreftokenEXP))
 	if err != nil {
 		return Tokens{}, err
 	}
@@ -64,12 +64,15 @@ func GenerateTokens(uniqid int, username string, name string, role string) (Toke
 }
 
 // createJWT creates a JWT token for a given username and expiration duration
-func createJWT(uniqid int, username string, name string, role string, secretKey []byte, expiration time.Duration) (string, error) {
+func createJWT(uniqid int, username string, name string, role string, status string, account string, picture string, secretKey []byte, expiration time.Duration) (string, error) {
 	claims := jwt.MapClaims{
 		"uniqid":   uniqid,
 		"username": username,
 		"name":     name,
 		"role":     role,
+		"status":   status,
+		"account":  account,
+		"picture":  picture,
 		"exp":      time.Now().Add(expiration).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
