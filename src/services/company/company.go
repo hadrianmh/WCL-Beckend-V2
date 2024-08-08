@@ -47,7 +47,7 @@ func Get(ctx *gin.Context) (Response, error) {
 	}
 
 	limit, err := strconv.Atoi(LimitParam)
-	if err != nil || limit < 1 {
+	if err != nil || limit < -1 {
 		limit = 10
 	}
 
@@ -68,8 +68,6 @@ func Get(ctx *gin.Context) (Response, error) {
 			search = fmt.Sprintf(`WHERE (company LIKE '%%%s%%' OR address LIKE '%%%s%%' OR email LIKE '%%%s%%' OR phone LIKE '%%%s%%')`, SearchValue, SearchValue, SearchValue, SearchValue)
 		}
 
-		query = fmt.Sprintf(`SELECT id, company, address, email, phone, logo, input_by, hidden FROM company %s ORDER BY id DESC LIMIT %d OFFSET %d`, search, limit, offset)
-
 		query_datatables = fmt.Sprintf(`SELECT COUNT(id) as totalrows FROM company %s ORDER BY id DESC`, search)
 		if err = sql.Connection.QueryRow(query_datatables).Scan(&totalrows); err != nil {
 			if err.Error() == `sql: no rows in result set` {
@@ -78,6 +76,13 @@ func Get(ctx *gin.Context) (Response, error) {
 				return Response{}, err
 			}
 		}
+
+		// If request limit -1 (pagination datatables) is show all
+		if limit == -1 {
+			limit = totalrows
+		}
+
+		query = fmt.Sprintf(`SELECT id, company, address, email, phone, logo, input_by, hidden FROM company %s ORDER BY id DESC LIMIT %d OFFSET %d`, search, limit, offset)
 
 	} else {
 		query = fmt.Sprintf(`SELECT id, company, address, email, phone, logo, input_by, hidden FROM company WHERE id = %d LIMIT 1`, id)
@@ -125,7 +130,7 @@ func Get(ctx *gin.Context) (Response, error) {
 	return response, nil
 }
 
-func Create(CompanyName string, Address string, Email string, Phone string, Logo string, InputBy int) ([]Company, error) {
+func Create(Sessionid string, CompanyName string, Address string, Email string, Phone string, Logo string, InputBy int) ([]Company, error) {
 	sql, err := adapters.NewSql()
 	if err != nil {
 		return nil, err
@@ -148,9 +153,11 @@ func Create(CompanyName string, Address string, Email string, Phone string, Logo
 	allowedFormats := map[string]bool{"jpg": true, "jpeg": true, "png": true}
 	getFormat := utils.GetImageFormat(Logo)
 
-	format := strings.ToLower(getFormat)
-	if !allowedFormats[format] {
-		return nil, errors.New("only JPG, JPEG, and PNG formats are allowed")
+	if getFormat != "" {
+		format := strings.ToLower(getFormat)
+		if !allowedFormats[format] {
+			return nil, errors.New("only JPG, JPEG, and PNG formats are allowed")
+		}
 	}
 
 	queryCreate := fmt.Sprintf("INSERT INTO company (company, address, email, phone, logo, input_by, hidden) VALUES ('%s', '%s', '%s', '%s', '%s', '%d','0')", CompanyName, Address, Email, Phone, Logo, InputBy)
@@ -161,10 +168,17 @@ func Create(CompanyName string, Address string, Email string, Phone string, Logo
 
 	defer create.Close()
 
+	// Log capture
+	utils.Capture(
+		`Company Created`,
+		fmt.Sprintf(`Company: %s - Address: %s - Phone: %s - Email: %s`, CompanyName, Address, Phone, Email),
+		Sessionid,
+	)
+
 	return []Company{}, nil
 }
 
-func Update(Id int, CompanyName string, Address string, Email string, Phone string, Logo string, InputBy int, Hidden int) ([]Company, error) {
+func Update(Sessionid string, Id int, CompanyName string, Address string, Email string, Phone string, Logo string, InputBy int, Hidden int) ([]Company, error) {
 	sql, err := adapters.NewSql()
 	if err != nil {
 		return nil, err
@@ -185,16 +199,14 @@ func Update(Id int, CompanyName string, Address string, Email string, Phone stri
 
 	// Unique email validation
 	var id int
-	query_email := fmt.Sprintf(`SELECT id FROM company WHERE company = '%s' LIMIT 1`, CompanyName)
-	if err = sql.Connection.QueryRow(query_email).Scan(&id); err != nil {
+	query_id = fmt.Sprintf(`SELECT id FROM company WHERE company = '%s' LIMIT 1`, CompanyName)
+	if err = sql.Connection.QueryRow(query_id).Scan(&id); err != nil {
 		if err.Error() == `sql: no rows in result set` {
 			id = Id
 		} else {
 			return nil, err
 		}
 	}
-
-	fmt.Printf(`%s - %s`, Id, id)
 
 	if Id != id {
 		return nil, errors.New("company registered")
@@ -208,25 +220,30 @@ func Update(Id int, CompanyName string, Address string, Email string, Phone stri
 
 	defer update.Close()
 
+	// Log capture
+	utils.Capture(
+		`Company Edited`,
+		fmt.Sprintf(`Companyid: %d - Company: %s - Address: %s - Phone: %s - Email: %s`, Id, CompanyName, Address, Phone, Email),
+		Sessionid,
+	)
+
 	return []Company{}, nil
 }
 
-func Delete(Id int) ([]Company, error) {
+func Delete(Sessionid string, Id int) ([]Company, error) {
 	sql, err := adapters.NewSql()
 	if err != nil {
 		return nil, err
 	}
 
-	query_id := fmt.Sprintf("SELECT id FROM company WHERE id = %d LIMIT 1", Id)
-	rows_id, err := sql.Connection.Query(query_id)
-	if err != nil {
-		return nil, err
-	}
-
-	defer rows_id.Close()
-
-	if !rows_id.Next() {
-		return nil, errors.New("invalid ID")
+	var company, address, email, phone string
+	query_id := fmt.Sprintf(`SELECT company, address, email, phone FROM company WHERE id = %d LIMIT 1`, Id)
+	if err = sql.Connection.QueryRow(query_id).Scan(&company, &address, &email, &phone); err != nil {
+		if err.Error() == `sql: no rows in result set` {
+			return nil, errors.New("invalid ID")
+		} else {
+			return nil, err
+		}
 	}
 
 	query := fmt.Sprintf("DELETE FROM company WHERE id = %d", Id)
@@ -236,6 +253,13 @@ func Delete(Id int) ([]Company, error) {
 	}
 
 	defer rows.Close()
+
+	// Log capture
+	utils.Capture(
+		`Company Deleted`,
+		fmt.Sprintf(`Companyid: %d - Company: %s - Address: %s - Phone: %s - Email: %s`, Id, company, address, phone, email),
+		Sessionid,
+	)
 
 	return []Company{}, nil
 }

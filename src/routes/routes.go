@@ -52,7 +52,13 @@ func InitRoutes(app *gin.Engine) {
 
 		// Purchase Order management
 		ApiV1Dashboard.GET("/purchase-order", controllers.GetPurchaseOrder)
+		ApiV1Dashboard.GET("/purchase-order/suggest/vendor", controllers.GetPurchaseOrder_SuggestVendor)
+		ApiV1Dashboard.GET("/purchase-order/suggest/item", controllers.GetPurchaseOrder_SuggestItem)
+		ApiV1Dashboard.GET("/purchase-order/suggest/type", controllers.GetPurchaseOrder_SuggestType)
+		ApiV1Dashboard.GET("/purchase-order/suggest/attr", controllers.GetPurchaseOrder_SuggestAttr)
+		ApiV1Dashboard.GET("/purchase-order/suggest/po", controllers.GetPurchaseOrder_SuggestPO)
 		ApiV1Dashboard.POST("/purchase-order", controllers.CreatePurchaseOrder)
+		ApiV1Dashboard.POST("/purchase-order/item", controllers.AddItemPurchaseOrder)
 		ApiV1Dashboard.PUT("/purchase-order/vendor", controllers.UpdatePurchaseOrder_Vendor)
 		ApiV1Dashboard.GET("/purchase-order/vendor/:id", controllers.GetPurchaseOrder_Vendor)
 		ApiV1Dashboard.PUT("/purchase-order/item", controllers.UpdatePurchaseOrder_Item)

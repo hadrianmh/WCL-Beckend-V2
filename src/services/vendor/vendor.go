@@ -2,6 +2,7 @@ package vendor
 
 import (
 	"backend/adapters"
+	"backend/utils"
 	"errors"
 	"fmt"
 	"strconv"
@@ -9,23 +10,41 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type Response struct {
+	Data            []Vendor `json:"data"`
+	RecordsTotal    string   `json:"recordsTotal,omitempty"`
+	RecordsFiltered string   `json:"recordsFiltered,omitempty"`
+}
+
 type Vendor struct {
 	Id         int    `json:"id,omitempty"`
 	VendorName string `json:"vendorname,omitempty"`
 	Address    string `json:"address,omitempty"`
-	Phone      int    `json:"phone,omitempty"`
+	Phone      string `json:"phone"`
 	InputBy    int    `json:"inputby,omitempty"`
 	Hidden     int    `json:"hidden,omitempty"`
 }
 
-func Get(ctx *gin.Context) ([]Vendor, error) {
-	var query string
+func Get(ctx *gin.Context) (Response, error) {
+	var totalrows int
+	var query, search, query_datatables string
 	idParam := ctx.DefaultQuery("id", "0")
+
+	// direct handling
 	LimitParam := ctx.DefaultQuery("limit", "10")
 	OffsetParam := ctx.DefaultQuery("offset", "0")
 
+	// datatables handling
+	SearchValue := ctx.DefaultQuery("search[value]", "")
+	LengthParam := ctx.DefaultQuery("length", "")
+	StartParam := ctx.DefaultQuery("start", "")
+	if LengthParam != "" && StartParam != "" {
+		LimitParam = LengthParam
+		OffsetParam = StartParam
+	}
+
 	limit, err := strconv.Atoi(LimitParam)
-	if err != nil || limit < 1 {
+	if err != nil || limit < -1 {
 		limit = 10
 	}
 
@@ -34,32 +53,52 @@ func Get(ctx *gin.Context) ([]Vendor, error) {
 		offset = 0
 	}
 
+	sql, err := adapters.NewSql()
+	if err != nil {
+		return Response{}, err
+	}
+
 	id, err := strconv.Atoi(idParam)
 	if err != nil || id < 1 {
-		query = fmt.Sprintf(`SELECT id, vendor, address, phone, input_by, hidden FROM vendor ORDER BY id DESC LIMIT %d OFFSET %d`, limit, offset)
+		// datatables total rows and filtered handling
+		if SearchValue != "" {
+			search = fmt.Sprintf(`WHERE (vendor LIKE '%%%s%%' OR address LIKE '%%%s%%' OR phone LIKE '%%%s%%')`, SearchValue, SearchValue, SearchValue)
+		}
+
+		query_datatables = fmt.Sprintf(`SELECT COUNT(id) as totalrows FROM vendor %s ORDER BY id DESC`, search)
+		if err = sql.Connection.QueryRow(query_datatables).Scan(&totalrows); err != nil {
+			if err.Error() == `sql: no rows in result set` {
+				totalrows = 0
+			} else {
+				return Response{}, err
+			}
+		}
+
+		// If request limit -1 (pagination datatables) is show all
+		if limit == -1 {
+			limit = totalrows
+		}
+
+		query = fmt.Sprintf(`SELECT id, vendor, address, CASE WHEN phone = '' THEN '' ELSE phone END AS phone, input_by, hidden FROM vendor %s ORDER BY id DESC LIMIT %d OFFSET %d`, search, limit, offset)
+
 	} else {
 		query = fmt.Sprintf(`SELECT id, vendor, address, phone, input_by, hidden FROM vendor WHERE id = %d LIMIT 1`, id)
 	}
 
-	sql, err := adapters.NewSql()
-	if err != nil {
-		return nil, err
-	}
-
 	rows, err := sql.Connection.Query(query)
 	if err != nil {
-		return nil, err
+		return Response{}, err
 	}
 
 	defer rows.Close()
 
 	vendors := []Vendor{}
 	for rows.Next() {
-		var id, inputby, hidden, phone int
-		var vendorname, address string
+		var id, inputby, hidden int
+		var vendorname, address, phone string
 
 		if err := rows.Scan(&id, &vendorname, &address, &phone, &inputby, &hidden); err != nil {
-			return nil, err
+			return Response{}, err
 		}
 
 		vendors = append(vendors, Vendor{
@@ -73,13 +112,20 @@ func Get(ctx *gin.Context) ([]Vendor, error) {
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return Response{}, err
 	}
 
-	return vendors, nil
+	response := Response{
+		RecordsTotal:    fmt.Sprintf(`%d`, totalrows),
+		RecordsFiltered: fmt.Sprintf(`%d`, totalrows),
+	}
+
+	response.Data = vendors
+
+	return response, nil
 }
 
-func Create(VendorName string, Address string, Phone int, InputBy int) ([]Vendor, error) {
+func Create(Sessionid string, VendorName string, Address string, Phone int, InputBy int) ([]Vendor, error) {
 	sql, err := adapters.NewSql()
 	if err != nil {
 		return nil, err
@@ -106,10 +152,17 @@ func Create(VendorName string, Address string, Phone int, InputBy int) ([]Vendor
 
 	defer create.Close()
 
+	// Log capture
+	utils.Capture(
+		`Vendor Created`,
+		fmt.Sprintf(`Vendor: %s - Address: %s - Phone: %d`, VendorName, Address, Phone),
+		Sessionid,
+	)
+
 	return []Vendor{}, nil
 }
 
-func Update(Id int, VendorName string, Address string, Phone int, InputBy int, Hidden int) ([]Vendor, error) {
+func Update(Sessionid string, Id int, VendorName string, Address string, Phone int, InputBy int, Hidden int) ([]Vendor, error) {
 	sql, err := adapters.NewSql()
 	if err != nil {
 		return nil, err
@@ -149,25 +202,29 @@ func Update(Id int, VendorName string, Address string, Phone int, InputBy int, H
 
 	defer update.Close()
 
+	// Log capture
+	utils.Capture(
+		`Vendor Updated`,
+		fmt.Sprintf(`Vendorid: %d - Vendor: %s - Address: %s - Phone: %d`, Id, VendorName, Address, Phone),
+		Sessionid,
+	)
+
 	return []Vendor{}, nil
 }
 
-func Delete(Id int) ([]Vendor, error) {
+func Delete(Sessionid string, Id int) ([]Vendor, error) {
 	sql, err := adapters.NewSql()
 	if err != nil {
 		return nil, err
 	}
-
-	query_id := fmt.Sprintf("SELECT id FROM vendor WHERE id = %d LIMIT 1", Id)
-	rows_id, err := sql.Connection.Query(query_id)
-	if err != nil {
-		return nil, err
-	}
-
-	defer rows_id.Close()
-
-	if !rows_id.Next() {
-		return nil, errors.New("invalid ID")
+	var vendor, address, phone string
+	query_id := fmt.Sprintf(`SELECT vendor, address, phone FROM vendor WHERE id = %d LIMIT 1`, Id)
+	if err = sql.Connection.QueryRow(query_id).Scan(&vendor, &address, &phone); err != nil {
+		if err.Error() == `sql: no rows in result set` {
+			return nil, errors.New("invalid ID")
+		} else {
+			return nil, err
+		}
 	}
 
 	query := fmt.Sprintf("DELETE FROM vendor WHERE id = %d", Id)
@@ -177,6 +234,13 @@ func Delete(Id int) ([]Vendor, error) {
 	}
 
 	defer rows.Close()
+
+	// Log capture
+	utils.Capture(
+		`Vendor Deleted`,
+		fmt.Sprintf(`Vendor: %s - Address: %s - Phone: %s`, vendor, address, phone),
+		Sessionid,
+	)
 
 	return []Vendor{}, nil
 }

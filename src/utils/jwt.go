@@ -42,7 +42,7 @@ func GetSecretKey() error {
 }
 
 // GenerateTokens generates a new access and refresh token for a given username
-func GenerateTokens(uniqid int, username string, name string, role string, status string, account string, picture string) (Tokens, error) {
+func GenerateTokens(uniqid string, username string, name string, role string, status string, account string, picture string) (Tokens, error) {
 	if err := GetSecretKey(); err != nil {
 		return Tokens{}, err
 	}
@@ -64,7 +64,7 @@ func GenerateTokens(uniqid int, username string, name string, role string, statu
 }
 
 // createJWT creates a JWT token for a given username and expiration duration
-func createJWT(uniqid int, username string, name string, role string, status string, account string, picture string, secretKey []byte, expiration time.Duration) (string, error) {
+func createJWT(uniqid string, username string, name string, role string, status string, account string, picture string, secretKey []byte, expiration time.Duration) (string, error) {
 	claims := jwt.MapClaims{
 		"uniqid":   uniqid,
 		"username": username,
@@ -102,12 +102,12 @@ func ValidateToken(tokenString string, request string) (string, error) {
 		return "", jwt.ErrInvalidKey
 	}
 
-	username, ok := claims["username"].(string)
+	uniqid, ok := claims["uniqid"].(string)
 	if !ok {
 		return "", jwt.ErrInvalidKey
 	}
 
-	return username, nil
+	return uniqid, nil
 }
 
 // AuthenticateJWT is a middleware that checks the validity of the JWT token
@@ -124,7 +124,7 @@ func AuthenticateJWT() gin.HandlerFunc {
 			return
 		}
 
-		username, err := ValidateToken(tokenString, "access_token")
+		uniqid, err := ValidateToken(tokenString, "access_token")
 		if err != nil {
 			ctx.JSON(http.StatusUnauthorized, gin.H{
 				"code":   http.StatusUnauthorized,
@@ -135,7 +135,7 @@ func AuthenticateJWT() gin.HandlerFunc {
 			return
 		}
 
-		ctx.Set("username", username)
+		ctx.Set("uniqid", uniqid)
 		ctx.Next()
 	}
 }

@@ -86,7 +86,7 @@ type BodyRequestPurchaseOrder struct {
 	PoDate        string   `json:"po_date,omitempty" binding:"required"`
 	PoNumber      string   `json:"po_number,omitempty"`
 	Note          string   `json:"note,omitempty"`
-	Ppn           string   `json:"ppn,omitempty" binding:"required"`
+	Ppn           string   `json:"tax,omitempty" binding:"required"`
 	PoType        string   `json:"po_type,omitempty" binding:"required"`
 	MonthlyReport string   `json:"monthly_report,omitempty"`
 	InputBy       int      `json:"inputby,omitempty"`
@@ -97,10 +97,10 @@ type PoItem struct {
 	Id           int    `json:"itemid,omitempty"`
 	Fkid         int    `json:"fkid,omitempty"`
 	SequenceItem int    `json:"sequence_item,omitempty"`
-	Detail       string `json:"detail,omitempty" binding:"required"`
-	Size         string `json:"size,omitempty" binding:"required"`
-	Price1       string `json:"price1,omitempty" binding:"required"`
-	Price2       string `json:"price2,omitempty" binding:"required"`
+	Detail       string `json:"detail,omitempty"`
+	Size         string `json:"size,omitempty"`
+	Price1       string `json:"price_1,omitempty" binding:"required"`
+	Price2       string `json:"price_2,omitempty"`
 	Qty          int    `json:"qty,omitempty" binding:"required"`
 	Unit         string `json:"unit,omitempty"`
 	Merk         string `json:"merk,omitempty"`
@@ -431,7 +431,14 @@ func CreateCompany(ctx *gin.Context) {
 		return
 	}
 
-	create, err := company.Create(BodyReq.CompanyName, BodyReq.Address, BodyReq.Email, BodyReq.Phone, BodyReq.Logo, BodyReq.InputBy)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	create, err := company.Create(sessionid.(string), BodyReq.CompanyName, BodyReq.Address, BodyReq.Email, BodyReq.Phone, BodyReq.Logo, BodyReq.InputBy)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -461,7 +468,14 @@ func UpdateCompany(ctx *gin.Context) {
 		return
 	}
 
-	update, err := company.Update(BodyReq.Id, BodyReq.CompanyName, BodyReq.Address, BodyReq.Email, BodyReq.Phone, BodyReq.Logo, BodyReq.InputBy, BodyReq.Hidden)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	update, err := company.Update(sessionid.(string), BodyReq.Id, BodyReq.CompanyName, BodyReq.Address, BodyReq.Email, BodyReq.Phone, BodyReq.Logo, BodyReq.InputBy, BodyReq.Hidden)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -479,7 +493,14 @@ func DeleteCompany(ctx *gin.Context) {
 		return
 	}
 
-	delete, err := company.Delete(id)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	delete, err := company.Delete(sessionid.(string), id)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -495,7 +516,7 @@ func GetVendor(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": get})
 }
 
 func CreateVendor(ctx *gin.Context) {
@@ -519,7 +540,14 @@ func CreateVendor(ctx *gin.Context) {
 		return
 	}
 
-	create, err := vendor.Create(BodyReq.VendorName, BodyReq.Address, BodyReq.Phone, BodyReq.InputBy)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	create, err := vendor.Create(sessionid.(string), BodyReq.VendorName, BodyReq.Address, BodyReq.Phone, BodyReq.InputBy)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -549,7 +577,14 @@ func UpdateVendor(ctx *gin.Context) {
 		return
 	}
 
-	update, err := vendor.Update(BodyReq.Id, BodyReq.VendorName, BodyReq.Address, BodyReq.Phone, BodyReq.InputBy, BodyReq.Hidden)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	update, err := vendor.Update(sessionid.(string), BodyReq.Id, BodyReq.VendorName, BodyReq.Address, BodyReq.Phone, BodyReq.InputBy, BodyReq.Hidden)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -567,7 +602,14 @@ func DeleteVendor(ctx *gin.Context) {
 		return
 	}
 
-	delete, err := vendor.Delete(id)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	delete, err := vendor.Delete(sessionid.(string), id)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -583,7 +625,7 @@ func GetCustomer(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": get})
 }
 
 func CreateCustomer(ctx *gin.Context) {
@@ -607,7 +649,14 @@ func CreateCustomer(ctx *gin.Context) {
 		return
 	}
 
-	create, err := customer.Create(BodyReq.CustomerName, BodyReq.Address, BodyReq.City, BodyReq.SCountry, BodyReq.Province, BodyReq.PostalCode, BodyReq.Phone, BodyReq.SName, BodyReq.SAddress, BodyReq.SCity, BodyReq.SCountry, BodyReq.SProvince, BodyReq.SPostalCode, BodyReq.SPhone, BodyReq.InputBy)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	create, err := customer.Create(sessionid.(string), BodyReq.CustomerName, BodyReq.Address, BodyReq.City, BodyReq.Country, BodyReq.Province, BodyReq.PostalCode, BodyReq.Phone, BodyReq.SName, BodyReq.SAddress, BodyReq.SCity, BodyReq.SCountry, BodyReq.SProvince, BodyReq.SPostalCode, BodyReq.SPhone, BodyReq.InputBy)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -637,7 +686,14 @@ func UpdateCustomer(ctx *gin.Context) {
 		return
 	}
 
-	update, err := customer.Update(BodyReq.Id, BodyReq.CustomerName, BodyReq.Address, BodyReq.City, BodyReq.SCountry, BodyReq.Province, BodyReq.PostalCode, BodyReq.Phone, BodyReq.SName, BodyReq.SAddress, BodyReq.SCity, BodyReq.SCountry, BodyReq.SProvince, BodyReq.SPostalCode, BodyReq.SPhone, BodyReq.InputBy, BodyReq.Hidden)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	update, err := customer.Update(sessionid.(string), BodyReq.Id, BodyReq.CustomerName, BodyReq.Address, BodyReq.City, BodyReq.Country, BodyReq.Province, BodyReq.PostalCode, BodyReq.Phone, BodyReq.SName, BodyReq.SAddress, BodyReq.SCity, BodyReq.SCountry, BodyReq.SProvince, BodyReq.SPostalCode, BodyReq.SPhone, BodyReq.InputBy, BodyReq.Hidden)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -655,7 +711,14 @@ func DeleteCustomer(ctx *gin.Context) {
 		return
 	}
 
-	delete, err := customer.Delete(id)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	delete, err := customer.Delete(sessionid.(string), id)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -666,6 +729,56 @@ func DeleteCustomer(ctx *gin.Context) {
 
 func GetPurchaseOrder(ctx *gin.Context) {
 	get, err := purchaseorder.Get(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
+		return
+	}
+
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": get})
+}
+
+func GetPurchaseOrder_SuggestVendor(ctx *gin.Context) {
+	get, err := purchaseorder.SuggestVendor(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
+		return
+	}
+
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
+}
+
+func GetPurchaseOrder_SuggestItem(ctx *gin.Context) {
+	get, err := purchaseorder.SuggestItem(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
+		return
+	}
+
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
+}
+
+func GetPurchaseOrder_SuggestType(ctx *gin.Context) {
+	get, err := purchaseorder.SuggestType(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
+		return
+	}
+
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
+}
+
+func GetPurchaseOrder_SuggestAttr(ctx *gin.Context) {
+	get, err := purchaseorder.SuggestAttr(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
+		return
+	}
+
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
+}
+
+func GetPurchaseOrder_SuggestPO(ctx *gin.Context) {
+	get, err := purchaseorder.SuggestPO(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -731,7 +844,51 @@ func CreatePurchaseOrder(ctx *gin.Context) {
 		return
 	}
 
-	create, err := purchaseorder.Create(body)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	create, err := purchaseorder.Create(sessionid.(string), body)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
+		return
+	}
+
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": create}})
+}
+
+func AddItemPurchaseOrder(ctx *gin.Context) {
+	body, err := ioutil.ReadAll(ctx.Request.Body)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": "Bad Request"}})
+		return
+	}
+
+	if len(body) < 1 {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": "Bad Request"}})
+		return
+	}
+
+	// Reset the request body so it can be read again before ShouldBindJSON
+	ctx.Request.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+
+	var BodyReq []PoItem
+	if err := ctx.ShouldBindJSON(&BodyReq); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
+		return
+	}
+
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	create, err := purchaseorder.AddItem(sessionid.(string), body)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -761,7 +918,14 @@ func UpdatePurchaseOrder_Vendor(ctx *gin.Context) {
 		return
 	}
 
-	update, err := purchaseorder.UpdateVendor(BodyReq.PoId, BodyReq.Vendorid, BodyReq.Companyid, BodyReq.PoDate, BodyReq.Note, BodyReq.Ppn)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	update, err := purchaseorder.UpdateVendor(sessionid.(string), BodyReq.PoId, BodyReq.Vendorid, BodyReq.Companyid, BodyReq.PoDate, BodyReq.Note, BodyReq.Ppn)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -791,7 +955,14 @@ func UpdatePurchaseOrder_Item(ctx *gin.Context) {
 		return
 	}
 
-	update, err := purchaseorder.UpdateItem(BodyReq.Id, BodyReq.Detail, BodyReq.Size, BodyReq.Price1, BodyReq.Price2, BodyReq.Qty, BodyReq.Unit, BodyReq.Merk, BodyReq.ItemType, BodyReq.Core, BodyReq.Roll, BodyReq.Material)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	update, err := purchaseorder.UpdateItem(sessionid.(string), BodyReq.Id, BodyReq.Detail, BodyReq.Size, BodyReq.Price1, BodyReq.Price2, BodyReq.Qty, BodyReq.Unit, BodyReq.Merk, BodyReq.ItemType, BodyReq.Core, BodyReq.Roll, BodyReq.Material)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return

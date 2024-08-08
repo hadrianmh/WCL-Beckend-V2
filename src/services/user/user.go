@@ -45,7 +45,7 @@ func Get(ctx *gin.Context) (Response, error) {
 	}
 
 	limit, err := strconv.Atoi(LimitParam)
-	if err != nil || limit < 1 {
+	if err != nil || limit < -1 {
 		limit = 10
 	}
 
@@ -66,8 +66,6 @@ func Get(ctx *gin.Context) (Response, error) {
 			search = fmt.Sprintf(`WHERE (name LIKE '%%%s%%' OR email LIKE '%%%s%%' OR role LIKE '%%%s%%' OR status LIKE '%%%s%%' OR account LIKE '%%%s%%')`, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue)
 		}
 
-		query = fmt.Sprintf(`SELECT id, name, email, role, status, account, hidden FROM user %s ORDER BY id DESC LIMIT %d OFFSET %d`, search, limit, offset)
-
 		query_datatables = fmt.Sprintf(`SELECT COUNT(id) as totalrows FROM user %s ORDER BY id DESC`, search)
 		if err = sql.Connection.QueryRow(query_datatables).Scan(&totalrows); err != nil {
 			if err.Error() == `sql: no rows in result set` {
@@ -76,6 +74,13 @@ func Get(ctx *gin.Context) (Response, error) {
 				return Response{}, err
 			}
 		}
+
+		// If request limit -1 (pagination datatables) is show all
+		if limit == -1 {
+			limit = totalrows
+		}
+
+		query = fmt.Sprintf(`SELECT id, name, email, role, status, account, hidden FROM user %s ORDER BY id DESC LIMIT %d OFFSET %d`, search, limit, offset)
 
 	} else {
 		query = fmt.Sprintf(`SELECT id, name, email, role, status, account, hidden FROM user WHERE id = %d LIMIT 1`, id)

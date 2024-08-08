@@ -2,6 +2,7 @@ package utils
 
 import (
 	"strings"
+	"time"
 	"unicode"
 )
 
@@ -55,4 +56,12 @@ func GetImageFormat(dataURL string) string {
 		}
 	}
 	return ""
+}
+
+func ValidateReportFormatDate(dateStr string, format string) bool {
+	// Try to parse the date string using the allowed format
+	if _, err := time.Parse(format, dateStr); err != nil {
+		return false
+	}
+	return true
 }

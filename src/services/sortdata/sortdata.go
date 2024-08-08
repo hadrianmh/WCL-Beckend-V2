@@ -43,7 +43,6 @@ func GetArchive(ctx *gin.Context) ([]SortDataResponse, error) {
 	}
 
 	query := fmt.Sprintf(`SELECT DISTINCT %s FROM %s ORDER BY %s DESC`, strings.ToLower(Data), strings.ToLower(From), strings.ToLower(Data))
-	fmt.Println(query)
 	rows, err := sql.Connection.Query(query)
 	if err != nil {
 		return nil, err

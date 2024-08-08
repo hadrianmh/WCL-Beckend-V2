@@ -9,7 +9,7 @@ import (
 )
 
 type UserData struct {
-	Id      int    `json:"id"`
+	Id      string `json:"id"`
 	Name    string `json:"name"`
 	Email   string `json:"email"`
 	Role    string `json:"role"`
@@ -85,8 +85,7 @@ func Login(email string, password string, refresh_token string) *ResponseRequset
 
 	usersdata := []UserData{}
 	for rows.Next() {
-		var id int
-		var name, email, role, status, account, picture string
+		var id, name, email, role, status, account, picture string
 
 		if err := rows.Scan(&id, &name, &email, &role, &status, &account, &picture); err != nil {
 			jsonResp := &ResponseRequset{
@@ -168,7 +167,7 @@ func Refresh(email string, password string, refresh_token string) *ResponseRequs
 		return jsonResp
 	}
 
-	username, err := utils.ValidateToken(refresh_token, "refresh_token")
+	userid, err := utils.ValidateToken(refresh_token, "refresh_token")
 	if err != nil {
 		jsonResp := &ResponseRequset{
 			Message: err.Error(),
@@ -186,7 +185,7 @@ func Refresh(email string, password string, refresh_token string) *ResponseRequs
 		return jsonResp
 	}
 
-	query := fmt.Sprintf("SELECT id, name, email, role, status, account, picture FROM user WHERE email='%s' LIMIT 1", username)
+	query := fmt.Sprintf("SELECT id, name, email, role, status, account, picture FROM user WHERE id='%s' LIMIT 1", userid)
 	rows, err := sql.Connection.Query(query)
 	if err != nil {
 		jsonResp := &ResponseRequset{
@@ -198,10 +197,12 @@ func Refresh(email string, password string, refresh_token string) *ResponseRequs
 
 	defer rows.Close()
 
+	fmt.Println(userid)
+	fmt.Println(query)
+
 	usersdata := []UserData{}
 	for rows.Next() {
-		var id int
-		var name, email, role, status, account, picture string
+		var id, name, email, role, status, account, picture string
 
 		if err := rows.Scan(&id, &name, &email, &role, &status, &account, &picture); err != nil {
 			jsonResp := &ResponseRequset{
@@ -230,7 +231,7 @@ func Refresh(email string, password string, refresh_token string) *ResponseRequs
 		return jsonResp
 	}
 
-	tokens, err := utils.GenerateTokens(usersdata[0].Id, username, usersdata[0].Name, usersdata[0].Role, usersdata[0].Status, usersdata[0].Account, usersdata[0].Picture)
+	tokens, err := utils.GenerateTokens(userid, usersdata[0].Email, usersdata[0].Name, usersdata[0].Role, usersdata[0].Status, usersdata[0].Account, usersdata[0].Picture)
 	if err != nil {
 		jsonResp := &ResponseRequset{
 			Message: err.Error(),
