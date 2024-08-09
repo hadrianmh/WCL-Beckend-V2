@@ -38,6 +38,7 @@ type PurchaseOrder struct {
 	UserId        int      `json:"userid,omitempty"`
 	UserName      string   `json:"user,omitempty"`
 	Items         []PoItem `json:"items,omitempty"`
+	Fkid          int      `json:"fkid,omitempty"`
 }
 
 type PoItem struct {
@@ -58,11 +59,6 @@ type PoItem struct {
 	Material     string `json:"material"`
 	InputAttr    string `json:"inputattr,omitempty"`
 	PrintAttr    string `json:"printattr,omitempty"`
-}
-
-type Attr struct {
-	Input string `json:"input,omitempty"`
-	Print string `json:"print,omitempty"`
 }
 
 type DataTables struct {
@@ -152,6 +148,15 @@ type SuggestionsPO struct {
 	Category     string `json:"category"`
 }
 
+type Attr struct {
+	Input string `json:"input,omitempty"`
+	Print string `json:"print,omitempty"`
+}
+type AddItemPurchaseOrder struct {
+	Fkid  int      `json:"fkid,omitempty" binding:"required"`
+	Items []PoItem `json:"po_item,omitempty"`
+}
+
 func Get(ctx *gin.Context) (Response, error) {
 	// Load Config
 	config, err := config.LoadConfig("./config.json")
@@ -228,7 +233,6 @@ func Get(ctx *gin.Context) (Response, error) {
 	}
 
 	query_datatables = fmt.Sprintf(`SELECT COUNT(a.id) as totalrows FROM po_customer AS a JOIN vendor AS b ON a.id_vendor = b.id JOIN (SELECT * FROM po_item WHERE hidden = 0) AS c ON a.id = c.id_fk JOIN user AS d ON a.input_by = d.id JOIN company AS e ON e.id = a.id_company JOIN setting AS f ON f.id = a.type WHERE a.po_date %s %s ORDER BY a.id DESC`, Report, search)
-	fmt.Println(query_datatables)
 	if err = sql.Connection.QueryRow(query_datatables).Scan(&totalrows); err != nil {
 		if err.Error() == `sql: no rows in result set` {
 			totalrows = 0
@@ -1019,8 +1023,9 @@ func Create(Sessionid string, BodyReq []byte) ([]PurchaseOrder, error) {
 
 func AddItem(Sessionid string, BodyReq []byte) ([]PoItem, error) {
 	var item_total int
-	var items []PoItem
-	err := json.Unmarshal([]byte(BodyReq), &items)
+	var Po AddItemPurchaseOrder
+
+	err := json.Unmarshal([]byte(BodyReq), &Po)
 	if err != nil {
 		return nil, err
 	}
@@ -1028,6 +1033,11 @@ func AddItem(Sessionid string, BodyReq []byte) ([]PoItem, error) {
 	sql, err := adapters.NewSql()
 	if err != nil {
 		return nil, err
+	}
+
+	query := fmt.Sprintf(`SELECT COUNT(id) as item_total FROM po_item WHERE id_fk = %d`, Po.Fkid)
+	if err = sql.Connection.QueryRow(query).Scan(&item_total); err != nil {
+		item_total = 0
 	}
 
 	tx, err := sql.Connection.Begin()
@@ -1043,17 +1053,10 @@ func AddItem(Sessionid string, BodyReq []byte) ([]PoItem, error) {
 	}
 
 	defer stmtPoItem.Close()
-
-	for _, item := range items {
-
-		query := fmt.Sprintf(`SELECT COUNT(id) as item_total FROM po_item WHERE id_fk = %d`, item.Fkid)
-		if err = sql.Connection.QueryRow(query).Scan(&item_total); err != nil {
-			item_total = 0
-		}
-
-		SequenceItem := item_total + 1
-
-		_, err := stmtPoItem.Exec(item.Fkid, SequenceItem, item.Detail, item.Size, utils.PriceFilter(item.Price1), utils.PriceFilter(item.Price2), item.Qty, item.Unit, item.Merk, item.ItemType, item.Core, item.Roll, item.Material, 0)
+	for index, item := range Po.Items {
+		fmt.Println(index)
+		SequenceItem := item_total + index
+		_, err := stmtPoItem.Exec(Po.Fkid, SequenceItem, item.Detail, item.Size, utils.PriceFilter(item.Price1), utils.PriceFilter(item.Price2), item.Qty, item.Unit, item.Merk, item.ItemType, item.Core, item.Roll, item.Material, 0)
 		if err != nil {
 			tx.Rollback()
 			return nil, err
@@ -1065,7 +1068,6 @@ func AddItem(Sessionid string, BodyReq []byte) ([]PoItem, error) {
 	}
 
 	return []PoItem{}, nil
-
 }
 
 func Delete(Id int) ([]PoItem, error) {

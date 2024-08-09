@@ -93,6 +93,11 @@ type BodyRequestPurchaseOrder struct {
 	Items         []PoItem `json:"po_item,omitempty"`
 }
 
+type BodyRequestAddItemPurchaseOrder struct {
+	Fkid  int      `json:"fkid,omitempty" binding:"required"`
+	Items []PoItem `json:"po_item,omitempty"`
+}
+
 type PoItem struct {
 	Id           int    `json:"itemid,omitempty"`
 	Fkid         int    `json:"fkid,omitempty"`
@@ -875,7 +880,7 @@ func AddItemPurchaseOrder(ctx *gin.Context) {
 	// Reset the request body so it can be read again before ShouldBindJSON
 	ctx.Request.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 
-	var BodyReq []PoItem
+	var BodyReq BodyRequestAddItemPurchaseOrder
 	if err := ctx.ShouldBindJSON(&BodyReq); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
