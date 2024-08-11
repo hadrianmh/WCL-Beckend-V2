@@ -76,13 +76,18 @@ func InitRoutes(app *gin.Engine) {
 		ApiV1Dashboard.PUT("/sales-order/item", controllers.UpdateSalesOrder_Item)
 		ApiV1Dashboard.DELETE("/sales-order/item/:id", controllers.DeleteSalesOrder)
 		ApiV1Dashboard.GET("/sales-order/shipping-cost/:id", controllers.GetSalesOrder_ShipCost)
-		ApiV1Dashboard.PUT("/sales-order/shipping-cost", controllers.UpdateSalesOrder_Item)
+		ApiV1Dashboard.PUT("/sales-order/shipping-cost", controllers.UpdateSalesOrder_ShipCost)
+		ApiV1Dashboard.GET("/sales-order/suggest/type", controllers.GetSalesOrder_SuggestType)
+		ApiV1Dashboard.GET("/sales-order/suggest/customer", controllers.GetSalesOrder_SuggestCustomer)
+		ApiV1Dashboard.GET("/sales-order/suggest/item", controllers.GetSalesOrder_SuggestItem)
+		ApiV1Dashboard.GET("/sales-order/suggest/attr", controllers.GetSalesOrder_SuggestAttr)
 
 		// Workorder Management
-		ApiV1Dashboard.GET("/workorder", controllers.GetWorkorder)
-		ApiV1Dashboard.POST("/workorder", controllers.CreateWorkorder)
-		ApiV1Dashboard.GET("/workorder/print/:wocusid/:sequence_item", controllers.GetWorkorder_Printview)
-		ApiV1Dashboard.POST("/workorder/print", controllers.GetWorkorder_Printnow)
+		ApiV1Dashboard.GET("/workorder", controllers.Workorder_Get)
+		ApiV1Dashboard.POST("/workorder", controllers.Workorder_Create)
+		ApiV1Dashboard.GET("/workorder/print/:wocusid/:sequence_item", controllers.Workorder_Printview)
+		ApiV1Dashboard.POST("/workorder/print", controllers.Workorder_Printnow)
+		ApiV1Dashboard.GET("/workorder/process/:id/:sequence_item", controllers.Workorder_GetProcess)
 
 		// Delivery Orders Management
 		ApiV1Dashboard.GET("/delivery-order", controllers.GetDeliveryOrder)

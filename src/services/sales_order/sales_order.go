@@ -15,6 +15,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type Response struct {
+	Data            []DataTables `json:"data"`
+	RecordsTotal    string       `json:"recordsTotal,omitempty"`
+	RecordsFiltered string       `json:"recordsFiltered,omitempty"`
+}
+
 type Preorder struct {
 	CompanyId    int            `json:"companyid"`
 	CompanyName  string         `json:"company,omitempty"`
@@ -24,8 +30,8 @@ type Preorder struct {
 	NoPoCustomer string         `json:"po_customer,omitempty"`
 	OrderGrade   int            `json:"order_grade"`
 	InputBy      int            `json:"input_by,omitempty"`
-	Ppn          int            `json:"ppn"`
-	Items        []PreorderItem `json:"so_item,omitempty"`
+	Ppn          int            `json:"tax"`
+	Items        []PreorderItem `json:"items,omitempty"`
 }
 
 type PreorderItem struct {
@@ -67,73 +73,172 @@ type PreorderShippingCost struct {
 }
 
 type DataTables struct {
-	Itemid       int    `json:"itemid,omitempty"`
-	SequenceItem int    `json:"sequence_item,omitempty"`
-	Detail       int    `json:"detail"`
-	Item         string `json:"item,omitempty"`
-	Size         string `json:"size,omitempty"`
-	Price        string `json:"price,omitempty"`
-	Qty          int    `json:"qty,omitempty"`
-	CompanyId    int    `json:"companyid,omitempty"`
-	CustomerId   int    `json:"customerid,omitempty"`
-	FkId         int    `json:"fkid,omitempty"`
+	Itemid       int    `json:"itemid"`
+	SequenceItem int    `json:"sequence_item"`
+	Detail       string `json:"detail"`
+	Item         string `json:"item"`
+	Size         string `json:"size"`
+	Price        string `json:"price"`
+	Qty          int    `json:"qty"`
+	CompanyId    int    `json:"companyid"`
+	CustomerId   int    `json:"customerid"`
+	FkId         int    `json:"fkid"`
 	CustomerName string `json:"customer"`
 	Estimated    string `json:"estimasi"`
-	PoDate       string `json:"po_date,omitempty"`
-	NoPoCustomer string `json:"po_customer,omitempty"`
-	OrderGrade   int    `json:"order_grade,omitempty"`
-	InputBy      int    `json:"input_by,omitempty"`
-	SoNumber     string `json:"so_no,omitempty"`
-	Unit         string `json:"unit,omitempty"`
-	Qore         string `json:"qore,omitempty"`
-	Lin          string `json:"lin,omitempty"`
-	Roll         string `json:"roll,omitempty"`
+	PoDate       string `json:"po_date"`
+	NoPoCustomer string `json:"po_customer"`
+	OrderGrade   string `json:"order_grade"`
+	InputBy      int    `json:"input_by"`
+	SoNumber     string `json:"so_no"`
+	Unit         string `json:"unit"`
+	Qore         string `json:"qore"`
+	Lin          string `json:"lin"`
+	Roll         string `json:"roll"`
 	Material     string `json:"ingredient"`
-	Volume       string `json:"volume,omitempty"`
-	Total        int    `json:"total,omitempty"`
+	Volume       string `json:"volume"`
+	Total        string `json:"total"`
 	Note         string `json:"annotation"`
-	Porporasi    int    `json:"porporasi"`
-	UkBahanBaku  string `json:"uk_bahan_baku,omitempty"`
-	QtyBahanBaku string `json:"qty_bahan_baku,omitempty"`
-	Sources      string `json:"sources,omitempty"`
-	Merk         string `json:"merk,omitempty"`
-	WoType       string `json:"type,omitempty"`
-	Ppn          int    `json:"ppn,omitempty"`
-	OrderStatus  int    `json:"order_status,omitempty"`
+	Porporasi    string `json:"porporasi"`
+	UkBahanBaku  string `json:"uk_bahan_baku"`
+	QtyBahanBaku string `json:"qty_bahan_baku"`
+	Sources      string `json:"sources"`
+	Merk         string `json:"merk"`
+	WoType       string `json:"type"`
+	Ppn          string `json:"ppn"`
+	OrderStatus  int    `json:"order_status"`
 	Etd          string `json:"etd"`
-	Isi          string `json:"isi,omitempty"`
-	Ongkir       string `json:"ongkir,omitempty"`
-	SjId         string `json:"id_sj,omitempty"`
+	Isi          string `json:"isi"`
+	Ongkir       string `json:"ongkir"`
+	SjId         string `json:"id_sj"`
 	CompanyName  string `json:"company"`
-	InputName    string `json:"username,omitempty"`
+	InputName    string `json:"username"`
 }
 
-func Get(ctx *gin.Context) ([]DataTables, error) {
+type SuggestionsType struct {
+	Id   string `json:"id,omitempty"`
+	Item string `json:"item,omitempty"`
+}
+
+type SuggestionsCustomer struct {
+	Poid         string `json:"po_id,omitempty"`
+	Customerid   string `json:"customerid"`
+	CustomerName string `json:"customername,omitempty"`
+	NoPoCustomer string `json:"nopocustomer,omitempty"`
+	Item         string `json:"item,omitempty"`
+	Label        string `json:"label"`
+	Value        string `json:"value"`
+	Category     string `json:"category"`
+}
+
+type SuggestionsItem struct {
+	PoId       int            `json:"po_id,omitempty"`
+	Customerid int            `json:"customerid,omitempty"`
+	Items      []PreorderItem `json:"items,omitempty"`
+}
+
+func Get(ctx *gin.Context) (Response, error) {
 	// Load Config
 	config, err := config.LoadConfig("./config.json")
 	if err != nil {
-		return nil, err
+		return Response{}, err
 	}
 
-	var query, monthlyreport string
+	var totalrows int
+	var query, search, query_datatables, Report string
+	// idParam := ctx.DefaultQuery("id", "0")
 	LimitParam := ctx.DefaultQuery("limit", "10")
 	OffsetParam := ctx.DefaultQuery("offset", "0")
-	MonthlyReportParam := ctx.DefaultQuery("monthly_report", "")
+	ReportParam := ctx.DefaultQuery("report", "")
+	StartDateParam := ctx.DefaultQuery("startdate", "")
+	EndDateParam := ctx.DefaultQuery("enddate", "")
+
+	// datatables handling
+	SearchValue := ctx.DefaultQuery("search[value]", "")
+	LengthParam := ctx.DefaultQuery("length", "")
+	StartParam := ctx.DefaultQuery("start", "")
+
+	if LengthParam != "" && StartParam != "" {
+		LimitParam = LengthParam
+		OffsetParam = StartParam
+	}
 
 	limit, err := strconv.Atoi(LimitParam)
-	if err != nil || limit < 1 {
+	if err != nil || limit < -1 {
 		limit = 10
 	}
 
 	offset, err := strconv.Atoi(OffsetParam)
-	if err != nil || offset < 0 {
+	if err != nil || offset < 1 {
 		offset = 0
 	}
 
-	monthlyreport = MonthlyReportParam
-	if MonthlyReportParam == "" {
-		DateNow := time.Now()
-		monthlyreport = DateNow.Format(config.App.DateFormat_MonthlyReport)
+	// filter data based on monthly, yearly or periode
+	DateNow := time.Now()
+	MonthDefault := DateNow.Format(config.App.DateFormat_MonthlyReport)
+
+	if ReportParam == "month" && StartDateParam != "" && utils.ValidateReportFormatDate(strings.ReplaceAll(StartDateParam, "-", "/"), config.App.DateFormat_MonthlyReport) {
+		Report = fmt.Sprintf(
+			`BETWEEN '%s-01' AND '%s-31'`,
+			strings.ReplaceAll(StartDateParam, "/", "-"),
+			strings.ReplaceAll(StartDateParam, "/", "-")) // BETWEEN '2024-01-01' AND '2024-01-31'
+
+	} else if ReportParam == "year" && StartDateParam != "" && utils.ValidateReportFormatDate(StartDateParam, config.App.DateFormat_Years) {
+		Report = fmt.Sprintf(
+			`BETWEEN '%s-01-01' AND '%s-12-31'`,
+			StartDateParam,
+			StartDateParam) // BETWEEN '2024-01-01' AND '2024-01-31'
+
+	} else if ReportParam == "periode" && StartDateParam != "" && EndDateParam != "" && utils.ValidateReportFormatDate(StartDateParam, config.App.DateFormat_Global) && utils.ValidateReportFormatDate(EndDateParam, config.App.DateFormat_Global) {
+		Report = fmt.Sprintf(
+			`BETWEEN '%s' AND '%s'`,
+			StartDateParam,
+			EndDateParam) // BETWEEN '2024-01-01' AND '2024-01-31'
+
+	} else {
+		Report = fmt.Sprintf(
+			`BETWEEN '%s-01' AND '%s-31'`,
+			strings.ReplaceAll(MonthDefault, "/", "-"),
+			strings.ReplaceAll(MonthDefault, "/", "-")) // BETWEEN '2024-01-01' AND '2024-01-31'
+	}
+
+	// datatables total rows and filtered handling
+	if SearchValue != "" {
+		search = fmt.Sprintf(`AND (a.po_date LIKE '%%%s%%' OR a.nopo LIKE '%%%s%%' OR a.note LIKE '%%%s%%' OR a.ppn LIKE '%%%s%%' OR b.vendor LIKE '%%%s%%' OR c.detail LIKE '%%%s%%' OR c.size LIKE '%%%s%%' OR c.price_1 LIKE '%%%s%%' OR c.price_2 LIKE '%%%s%%' OR c.qty LIKE '%%%s%%' OR c.unit LIKE '%%%s%%' OR c.merk LIKE '%%%s%%' OR c.type LIKE '%%%s%%' OR c.core LIKE '%%%s%%' OR c.core LIKE '%%%s%%' OR c.gulungan LIKE '%%%s%%' OR c.bahan LIKE '%%%s%%' OR d.name LIKE '%%%s%%' OR e.company LIKE '%%%s%%' OR f.isi LIKE '%%%s%%')`, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue)
+	}
+
+	sql, err := adapters.NewSql()
+	if err != nil {
+		return Response{}, err
+	}
+
+	query_datatables = fmt.Sprintf(`SELECT
+	COUNT(a.id) as totalrows FROM preorder_item AS a
+	LEFT JOIN
+		preorder_customer AS b ON a.id_fk = b.id_fk
+	LEFT JOIN
+		workorder_item AS c ON c.id_fk = a.id_fk AND c.item_to = a.item_to
+	LEFT JOIN
+		preorder_price AS d ON a.id_fk = d.id_fk
+	LEFT JOIN
+		status AS e ON a.id_fk = e.id_fk AND a.item_to = e.item_to
+	LEFT JOIN
+		setting AS f ON a.detail = f.id
+	LEFT JOIN
+		(SELECT id_fk, id_sj, SUM(cost) AS total_ongkir FROM delivery_orders_customer GROUP BY id_fk) AS g ON g.id_fk = b.id_fk
+	LEFT JOIN
+		company AS h ON h.id = b.id_company WHERE b.po_date %s %s ORDER BY a.id DESC`, Report, search)
+	if err = sql.Connection.QueryRow(query_datatables).Scan(&totalrows); err != nil {
+		if err.Error() == `sql: no rows in result set` {
+			totalrows = 0
+		} else {
+			return Response{}, err
+		}
+	}
+
+	// If request limit -1 (pagination datatables) is show all
+	// Based on monthlyreport
+	if limit == -1 {
+		limit = totalrows
 	}
 
 	query = fmt.Sprintf(`SELECT
@@ -169,11 +274,11 @@ func Get(ctx *gin.Context) ([]DataTables, error) {
 		d.ppn,
 		e.order_status,
 		(a.price * a.qty) AS etd,
-		f.isi,
+		CASE WHEN f.isi != '' THEN f.isi ELSE '' END AS isi,
 		coalesce(g.total_ongkir, "0") AS ongkir,
 		coalesce(g.id_sj, "0") AS id_sj,
 		h.company
-	FROM preorder_item AS a
+	FROM (SELECT * FROM preorder_item WHERE hidden = 0) AS a
 	LEFT JOIN
 		preorder_customer AS b ON a.id_fk = b.id_fk
 	LEFT JOIN
@@ -188,62 +293,92 @@ func Get(ctx *gin.Context) ([]DataTables, error) {
 		(SELECT id_fk, id_sj, SUM(cost) AS total_ongkir FROM delivery_orders_customer GROUP BY id_fk) AS g ON g.id_fk = b.id_fk
 	LEFT JOIN
 		company AS h ON h.id = b.id_company
-	WHERE b.po_date LIKE '%s%%' ORDER BY a.id DESC LIMIT %d OFFSET %d`, strings.ReplaceAll(monthlyreport, "/", "-"), limit, offset)
-
-	sql, err := adapters.NewSql()
-	if err != nil {
-		return nil, err
-	}
+	WHERE b.po_date %s %s ORDER BY a.id DESC LIMIT %d OFFSET %d`, Report, search, limit, offset)
 
 	rows, err := sql.Connection.Query(query)
 	if err != nil {
-		return nil, err
+		return Response{}, err
 	}
 
 	defer rows.Close()
 
 	datatables := []DataTables{}
 	for rows.Next() {
-		var itemId, sequenceItem, detail, qty, companyid, customerid, fkid, orderGrade, porporasi, inputBy, ppn, orderStatus int
-		var poDate, itemName, size, price, unit, customerName, estDate, customerPoNumber, soNumber, qore, lin, roll, material, volume, note, ukBahanBaku, qtyBahanBaku, sources, merk, woType, isi, etd, companyName, ongkir, sjId, userName string
+		var etd, ppn, total float64
+		var itemId, sequenceItem, detail, qty, companyid, customerid, fkid, orderGrade, inputBy, orderStatus int
+		var poDate, itemName, size, price, unit, customerName, estDate, customerPoNumber, soNumber, qore, lin, roll, material, volume, note, ukBahanBaku, qtyBahanBaku, sources, merk, woType, isi, companyName, ongkir, sjId, userName, orderGradeStr, porporasi string
 
-		if err := rows.Scan(&itemId, &sequenceItem, &detail, &itemName, &size, &price, &qty, &unit, &companyid, &fkid, &customerid, &customerName, &poDate, &orderGrade, &customerPoNumber, &inputBy, &soNumber, &qore, &lin, &roll, &material, &volume, &note, &porporasi, &ukBahanBaku, &qtyBahanBaku, &sources, &merk, &woType, &ppn, &orderStatus, &etd, &isi, &ongkir, &sjId, &companyName); err != nil {
-			return nil, err
-		}
-
-		EtdConv, err := strconv.ParseFloat(etd, 64)
-		if err != nil {
-			return nil, err
+		if err := rows.Scan(&itemId, &sequenceItem, &detail, &itemName, &size, &price, &qty, &unit, &companyid, &customerid, &fkid, &customerName, &poDate, &orderGrade, &customerPoNumber, &inputBy, &soNumber, &qore, &lin, &roll, &material, &volume, &note, &porporasi, &ukBahanBaku, &qtyBahanBaku, &sources, &merk, &woType, &ppn, &orderStatus, &etd, &isi, &ongkir, &sjId, &companyName); err != nil {
+			return Response{}, err
 		}
 
 		poDateParse, err := time.Parse(config.App.DateFormat_Global, poDate)
 		if err != nil {
-			return nil, err
+			return Response{}, err
 		}
 
+		poDate = string(poDateParse.Format(config.App.DateFormat_Frontend))
 		poDateFuture := poDateParse.AddDate(0, 0, 16)
 		estDate = string(poDateFuture.Format(config.App.DateFormat_Frontend))
 
 		queryUserName := fmt.Sprintf(`SELECT name FROM user WHERE id = %d`, inputBy)
 		if err = sql.Connection.QueryRow(queryUserName).Scan(&userName); err != nil {
-			return nil, err
+			return Response{}, err
+		}
+
+		if orderGrade > 0 {
+			orderGradeStr = `Spesial`
+		} else {
+			orderGradeStr = `Reguler`
+		}
+
+		if porporasi == "1" {
+			porporasi = `YA`
+		} else {
+			porporasi = `TIDAK`
+		}
+
+		// Parsing dan filter sources
+		ParseSources := strings.Split(sources, "|")
+		if ParseSources[0] == "2" {
+			sourcesDateParse, err := time.Parse(config.App.DateFormat_Global, ParseSources[2])
+			if err != nil {
+				return Response{}, err
+			}
+			sourcesStr := sourcesDateParse.Format(config.App.DateFormat_Frontend)
+			sources = fmt.Sprintf(`SUBCONT (%s, %s)`, ParseSources[1], sourcesStr)
+
+		} else if ParseSources[0] == "3" {
+			sources = fmt.Sprintf(`IN STOCK (%s %s)`, ParseSources[1], unit)
+
+		} else {
+			sources = `Internal`
+		}
+
+		if ppn > 0 {
+			ppn = etd * 11 / 100
+			total = etd + ppn
+		} else {
+			ppn = 0
+			total = etd
 		}
 
 		datatables = append(datatables, DataTables{
 			Itemid:       itemId,
 			SequenceItem: sequenceItem,
-			Detail:       detail,
+			Detail:       isi,
 			Item:         itemName,
 			Size:         size,
 			Price:        price,
 			Qty:          qty,
+			Unit:         unit,
 			CompanyId:    companyid,
 			CustomerId:   customerid,
 			FkId:         fkid,
 			CustomerName: customerName,
 			PoDate:       poDate,
 			Estimated:    estDate,
-			OrderGrade:   orderGrade,
+			OrderGrade:   orderGradeStr,
 			NoPoCustomer: customerPoNumber,
 			InputBy:      inputBy,
 			SoNumber:     soNumber,
@@ -259,25 +394,32 @@ func Get(ctx *gin.Context) ([]DataTables, error) {
 			Sources:      sources,
 			Merk:         merk,
 			WoType:       woType,
-			Ppn:          ppn,
 			OrderStatus:  orderStatus,
-			Etd:          fmt.Sprintf("%.2f", EtdConv),
 			Isi:          isi,
 			Ongkir:       ongkir,
 			SjId:         sjId,
 			CompanyName:  companyName,
 			InputName:    userName,
+			Etd:          fmt.Sprintf("%.2f", etd),
+			Ppn:          fmt.Sprintf(`%.2f`, ppn),
+			Total:        fmt.Sprintf(`%.2f`, total),
 		})
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return Response{}, err
 	}
 
-	return datatables, nil
+	response := Response{
+		RecordsTotal:    fmt.Sprintf(`%d`, totalrows),
+		RecordsFiltered: fmt.Sprintf(`%d`, totalrows),
+	}
+	response.Data = datatables
+
+	return response, nil
 }
 
-func Create(BodyReq []byte) ([]Preorder, error) {
+func Create(Sessionid string, BodyReq []byte) ([]Preorder, error) {
 	var preorder Preorder
 	var fkId sql.NullInt64
 	var soNumber, noWso string
@@ -297,14 +439,10 @@ func Create(BodyReq []byte) ([]Preorder, error) {
 		return nil, err
 	}
 
-	fmt.Println(`hi`)
-
 	queryFkid := `SELECT id_fk FROM preorder_customer ORDER BY id DESC LIMIT 1`
 	if err = sql.Connection.QueryRow(queryFkid).Scan(&fkId); err != nil {
 		id_fk = 0 //set default data null
 	}
-
-	fmt.Println(`helo`)
 
 	querySoNumber := `SELECT no_so FROM workorder_item ORDER BY id DESC LIMIT 1`
 	if err = sql.Connection.QueryRow(querySoNumber).Scan(&soNumber); err != nil {
@@ -322,7 +460,7 @@ func Create(BodyReq []byte) ([]Preorder, error) {
 
 	id_fk = fkId.Int64 + 1
 
-	queryPoCustomer := fmt.Sprintf(`INSERT INTO preorder_customer (id_fk, id_company, id_customer, customer, order_grade, po_date, po_customer, input_by) VALUES (%d, %d, %d, '%s', %d, '%s', '%s', %d)`, id_fk, preorder.CompanyId, preorder.CustomerId, preorder.CustomerName, preorder.OrderGrade, preorder.PoDate, preorder.NoPoCustomer, preorder.InputBy)
+	queryPoCustomer := fmt.Sprintf(`INSERT INTO preorder_customer (id_fk, id_company, id_customer, customer, order_grade, po_date, po_customer, input_by) VALUES (%d, %d, %d, '%s', %d, '%s', '%s', %s)`, id_fk, preorder.CompanyId, preorder.CustomerId, preorder.CustomerName, preorder.OrderGrade, preorder.PoDate, preorder.NoPoCustomer, Sessionid)
 	_, errs := tx.Exec(queryPoCustomer)
 	if errs != nil {
 		tx.Rollback()
@@ -332,6 +470,7 @@ func Create(BodyReq []byte) ([]Preorder, error) {
 	queryPoItem := `INSERT INTO preorder_item (id_fk, item_to, detail, item, size, price, qty, unit, input_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	stmtPoItem, err := tx.Prepare(queryPoItem)
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 	defer stmtPoItem.Close()
@@ -339,6 +478,7 @@ func Create(BodyReq []byte) ([]Preorder, error) {
 	queryWoItem := `INSERT INTO workorder_item (id_fk, item_to, detail, no_so, item, size, unit, qore, lin, roll, ingredient, qty, volume, total, annotation, porporasi, uk_bahan_baku, qty_bahan_baku, sources, merk, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	stmtWoItem, err := tx.Prepare(queryWoItem)
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 	defer stmtWoItem.Close()
@@ -346,6 +486,7 @@ func Create(BodyReq []byte) ([]Preorder, error) {
 	queryStatus := `INSERT INTO status (id_fk, item_to, order_status, hidden) VALUES (?, ?, ?, ?)`
 	stmtStatus, err := tx.Prepare(queryStatus)
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 	defer stmtStatus.Close()
@@ -404,7 +545,7 @@ func Create(BodyReq []byte) ([]Preorder, error) {
 		return nil, fmt.Errorf("[err4] %s", err4)
 	}
 
-	queryWoCustomer := fmt.Sprintf(`INSERT INTO workorder_customer (id_fk, po_date, spk_date, duration, po_customer, customer, input_by) VALUES (%d, '%s', '%s', '%s', '%s', '%s', %d)`, id_fk, preorder.PoDate, "0000-00-00", "0000-00-00", preorder.NoPoCustomer, preorder.CustomerName, preorder.InputBy)
+	queryWoCustomer := fmt.Sprintf(`INSERT INTO workorder_customer (id_fk, po_date, spk_date, duration, po_customer, customer, input_by) VALUES (%d, '%s', '%s', '%s', '%s', '%s', %s)`, id_fk, preorder.PoDate, "0000-00-00", "0000-00-00", preorder.NoPoCustomer, preorder.CustomerName, Sessionid)
 	_, err5 := tx.Exec(queryWoCustomer)
 	if err5 != nil {
 		tx.Rollback()
@@ -414,6 +555,13 @@ func Create(BodyReq []byte) ([]Preorder, error) {
 	if err = tx.Commit(); err != nil {
 		return nil, err
 	}
+
+	// Log capture
+	utils.Capture(
+		`SO Created`,
+		fmt.Sprintf(`Customer: %s - PO No: %s - Date: %s`, preorder.CustomerName, preorder.NoPoCustomer, preorder.PoDate),
+		Sessionid,
+	)
 
 	return []Preorder{}, nil
 }
@@ -525,7 +673,7 @@ func GetItem(Id int) ([]PreorderItem, error) {
 	return preorderitem, nil
 }
 
-func UpdateCustomer(Id int, companyid int, customerid int, customername string, ordergrade int, podate string, ponumcustomer string, ppn int) ([]Preorder, error) {
+func UpdateCustomer(Sessionid string, Id int, companyid int, customerid int, customername string, ordergrade int, podate string, ponumcustomer string, ppn int) ([]Preorder, error) {
 	var id_fk int
 	sql, err := adapters.NewSql()
 	if err != nil {
@@ -580,10 +728,17 @@ func UpdateCustomer(Id int, companyid int, customerid int, customername string, 
 		return nil, err
 	}
 
+	// Log capture
+	utils.Capture(
+		`SO Updated [customer]`,
+		fmt.Sprintf(`PO Id: %d - PO No: %s - CustomerId: %d - CompanyId: %d - PO Date: %s - PPN: %d`, Id, ponumcustomer, customerid, companyid, podate, ppn),
+		Sessionid,
+	)
+
 	return []Preorder{}, nil
 }
 
-func UpdateItem(poitemid int, woitemid int, item string, size string, ukbahanbaku string, qore string, lin string, qtybahanbaku string, roll string, material string, unit string, volume int64, note string, price string, qty int64, sources string, porporasi int, detail int, merk string, wotype string, etc1 string, etc2 string) ([]PreorderItem, error) {
+func UpdateItem(Sessionid string, poitemid int, woitemid int, item string, size string, ukbahanbaku string, qore string, lin string, qtybahanbaku string, roll string, material string, unit string, volume int64, note string, price string, qty int64, sources string, porporasi int, detail int, merk string, wotype string, etc1 string, etc2 string) ([]PreorderItem, error) {
 	var id_fk, item_to int
 	var total, total_send_qty int64
 
@@ -682,6 +837,13 @@ func UpdateItem(poitemid int, woitemid int, item string, size string, ukbahanbak
 		return nil, err
 	}
 
+	// Log capture
+	utils.Capture(
+		`SO Updated [item]`,
+		fmt.Sprintf(`PoitemId: %d - WoitemId: %d - Item: %s - Size: %s - Qty: %d - Unit: %s - Price: %s`, poitemid, woitemid, item, size, qty, unit, price),
+		Sessionid,
+	)
+
 	return []PreorderItem{}, nil
 }
 
@@ -768,7 +930,7 @@ func UpdateShipCost(Id int, detail string, cost string, ekspedisi string, uom st
 	return []PreorderShippingCost{}, nil
 }
 
-func Delete(Id int) ([]PreorderItem, error) {
+func Delete(Sessionid string, Id int) ([]PreorderItem, error) {
 	var id_fk, item_to, jml_item_dlm_wo int
 	var customername, ponumcustomer, podate string
 
@@ -943,5 +1105,265 @@ func Delete(Id int) ([]PreorderItem, error) {
 		return nil, err
 	}
 
+	// Log capture
+	utils.Capture(
+		`SO Delete`,
+		fmt.Sprintf(`SoitemId: %d - Fkid: %d - Sequence Item: %d`, Id, id_fk, item_to),
+		Sessionid,
+	)
+
 	return []PreorderItem{}, nil
+}
+
+func SuggestType(ctx *gin.Context) ([]SuggestionsType, error) {
+	sql, err := adapters.NewSql()
+	if err != nil {
+		return nil, err
+	}
+
+	query := `SELECT id, isi FROM setting WHERE ket ='SO_ITEM'`
+	rows, err := sql.Connection.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	suggestType := []SuggestionsType{}
+	for rows.Next() {
+		var id, isi string
+
+		if err := rows.Scan(&id, &isi); err != nil {
+			return nil, err
+		}
+
+		suggestType = append(suggestType, SuggestionsType{
+			Id:   id,
+			Item: isi,
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return suggestType, nil
+}
+
+func SuggestCustomer(ctx *gin.Context) ([]SuggestionsCustomer, error) {
+	var prevValue, customer, nopo string
+	Keyword := ctx.DefaultQuery("keyword", "")
+
+	sql, err := adapters.NewSql()
+	if err != nil {
+		return nil, err
+	}
+
+	query := fmt.Sprintf(`SELECT a.id AS id_customer, a.nama, CASE WHEN b.po_customer IS NOT NULL THEN b.po_customer ELSE '' END AS po_customer, CASE WHEN b.id IS NOT NULL THEN b.id ELSE '' END AS id_po, CASE WHEN c.item IS NOT NULL THEN GROUP_CONCAT(c.item SEPARATOR ' - ') ELSE '' END AS item FROM customer AS a LEFT JOIN preorder_customer AS b ON a.id = b.id_customer LEFT JOIN preorder_item AS c ON c.id_fk = b.id_fk WHERE a.nama LIKE '%%%s%%' GROUP BY b.id_fk ORDER BY b.id DESC`, Keyword)
+	rows, err := sql.Connection.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	datas := []SuggestionsCustomer{}
+	for rows.Next() {
+		var customerid, customername, poid, nopocustomer, item string
+
+		if err := rows.Scan(&customerid, &customername, &nopocustomer, &poid, &item); err != nil {
+			return nil, err
+		}
+
+		datas = append(datas, SuggestionsCustomer{
+			Customerid:   customerid,
+			CustomerName: customername,
+			NoPoCustomer: nopocustomer,
+			Poid:         poid,
+			Item:         item,
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	suggestions := []SuggestionsCustomer{}
+	if len(datas) > 0 {
+		prevValue = ``
+		for _, data := range datas {
+			customer = strings.ReplaceAll(data.CustomerName, ` `, `_`)
+			nopo = strings.ReplaceAll(data.NoPoCustomer, ` `, `_`)
+
+			if nopo == "" {
+				suggestions = append(suggestions, SuggestionsCustomer{
+					Customerid: data.Customerid,
+					Poid:       ``,
+					Label:      `Buat sales baru`,
+					Value:      data.CustomerName,
+					Category:   data.CustomerName,
+				})
+
+			} else {
+
+				if prevValue != customer {
+					suggestions = append(suggestions, SuggestionsCustomer{
+						Customerid: data.Customerid,
+						Poid:       ``,
+						Label:      `Buat sales baru`,
+						Value:      data.CustomerName,
+						Category:   data.CustomerName,
+					})
+
+				} else {
+					suggestions = append(suggestions, SuggestionsCustomer{
+						Customerid: data.Customerid,
+						Poid:       data.Poid,
+						Label:      data.Item,
+						Value:      data.CustomerName,
+						Category:   data.CustomerName,
+					})
+				}
+			}
+
+			prevValue = customer
+		}
+
+	} else {
+		suggestions = append(suggestions, SuggestionsCustomer{
+			Customerid: ``,
+			Poid:       ``,
+			Label:      `Tidak terdaftar, silakan daftar sebagai customer baru.`,
+			Value:      Keyword,
+			Category:   ``,
+		})
+	}
+
+	return suggestions, nil
+}
+
+func SuggestItem(ctx *gin.Context) ([]SuggestionsItem, error) {
+	Customerid := ctx.DefaultQuery("customerid", "")
+	Poid := ctx.DefaultQuery("poid", "")
+
+	customerid, err := strconv.Atoi(Customerid)
+	if err != nil {
+		return nil, err
+	}
+
+	poid, err := strconv.Atoi(Poid)
+	if err != nil {
+		return nil, err
+	}
+
+	suggestionsitem := SuggestionsItem{
+		Customerid: customerid,
+	}
+
+	if poid > 0 {
+		if customerid == 0 {
+			return nil, errors.New("invalid ID")
+		}
+
+		sql, err := adapters.NewSql()
+		if err != nil {
+			return nil, err
+		}
+
+		query := fmt.Sprintf(`SELECT c.item_to, CASE WHEN c.price > 0 THEN c.price ELSE 0 END AS price, d.item, d.size, d.unit, d.qore, d.lin, d.roll, d.ingredient, d.qty, d.volume, d.annotation, d.porporasi, d.uk_bahan_baku, d.qty_bahan_baku, d.detail, d.merk, d.type FROM customer AS a LEFT JOIN preorder_customer AS b ON a.id = b.id_customer LEFT JOIN preorder_item AS c ON c.id_fk = b.id_fk LEFT JOIN workorder_item AS d ON d.id_fk = c.id_fk AND d.item_to = c.item_to WHERE a.id = %d AND b.id = %d`, customerid, poid)
+
+		rows, err := sql.Connection.Query(query)
+		if err != nil {
+			return nil, err
+		}
+
+		defer rows.Close()
+
+		suggestionsitem.PoId = poid
+
+		soitem := []PreorderItem{}
+		for rows.Next() {
+			var price float64
+			var sequence_item, porporasi, detail int
+			var qty, volume int64
+			var item, size, unit, qore, lin, roll, material, note, uk_bahan_baku, qty_bahan_baku, merk, itemtype string
+
+			if err := rows.Scan(&sequence_item, &price, &item, &size, &unit, &qore, &lin, &roll, &material, &qty, &volume, &note, &porporasi, &uk_bahan_baku, &qty_bahan_baku, &detail, &merk, &itemtype); err != nil {
+				return nil, err
+			}
+
+			soitem = append(soitem, PreorderItem{
+				SequenceItem: sequence_item,
+				Price:        fmt.Sprintf(`%.2f`, price),
+				Item:         item,
+				Size:         size,
+				Unit:         unit,
+				Qore:         qore,
+				Lin:          lin,
+				Roll:         roll,
+				Material:     material,
+				Qty:          qty,
+				Volume:       volume,
+				Note:         note,
+				Porporasi:    porporasi,
+				UkBahanBaku:  uk_bahan_baku,
+				QtyBahanBaku: qty_bahan_baku,
+				Detail:       detail,
+				Merk:         merk,
+				WoType:       itemtype,
+			})
+		}
+
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
+
+		suggestionsitem.Items = soitem
+
+	} else {
+		suggestionsitem.PoId = 0
+	}
+
+	return []SuggestionsItem{suggestionsitem}, nil
+}
+
+func SuggestAttr(ctx *gin.Context) (interface{}, error) {
+	Id := ctx.DefaultQuery("id", "")
+
+	IdInt, err := strconv.Atoi(Id)
+	if err != nil {
+		return nil, err
+	}
+
+	if IdInt < 1 {
+		return nil, errors.New("invalid ID")
+	}
+
+	sql, err := adapters.NewSql()
+	if err != nil {
+		return nil, err
+	}
+
+	var isi, value string
+	query := fmt.Sprintf(`SELECT isi, value FROM setting WHERE id = %d`, IdInt)
+	err = sql.Connection.QueryRow(query).Scan(&isi, &value)
+	if err != nil {
+		if err.Error() == `sql: no rows in result set` {
+			return nil, errors.New("invalid ID")
+		} else {
+			return nil, err
+		}
+	}
+
+	// Unmarshal the JSON string into a map without struct
+	var result map[string]string
+	if err = json.Unmarshal([]byte(value), &result); err != nil {
+		return nil, err
+	}
+
+	output := map[string]string{
+		"field": result["input"],
+	}
+
+	return output, nil
 }

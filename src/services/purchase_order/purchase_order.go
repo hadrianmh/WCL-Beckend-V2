@@ -153,8 +153,9 @@ type Attr struct {
 	Print string `json:"print,omitempty"`
 }
 type AddItemPurchaseOrder struct {
-	Fkid  int      `json:"fkid,omitempty" binding:"required"`
-	Items []PoItem `json:"po_item,omitempty"`
+	Fkid     int      `json:"fkid" binding:"required"`
+	PoNumber string   `json:"po_number" binding:"required"`
+	Items    []PoItem `json:"items,omitempty"`
 }
 
 func Get(ctx *gin.Context) (Response, error) {
@@ -400,7 +401,6 @@ func Get(ctx *gin.Context) (Response, error) {
 		RecordsTotal:    fmt.Sprintf(`%d`, totalrows),
 		RecordsFiltered: fmt.Sprintf(`%d`, totalrows),
 	}
-
 	response.Data = datatables
 
 	return response, nil
@@ -1053,36 +1053,67 @@ func AddItem(Sessionid string, BodyReq []byte) ([]PoItem, error) {
 	}
 
 	defer stmtPoItem.Close()
+
+	log := []map[string]string{}
 	for index, item := range Po.Items {
-		fmt.Println(index)
 		SequenceItem := item_total + index
 		_, err := stmtPoItem.Exec(Po.Fkid, SequenceItem, item.Detail, item.Size, utils.PriceFilter(item.Price1), utils.PriceFilter(item.Price2), item.Qty, item.Unit, item.Merk, item.ItemType, item.Core, item.Roll, item.Material, 0)
+
 		if err != nil {
 			tx.Rollback()
 			return nil, err
 		}
+
+		log = append(log, map[string]string{
+			"sequence_item": fmt.Sprintf(`%d`, SequenceItem),
+		})
 	}
 
 	if err = tx.Commit(); err != nil {
 		return nil, err
 	}
 
+	// Log capture
+	datalog, _ := json.Marshal(log)
+	utils.Capture(
+		`Item PO Created`,
+		fmt.Sprintf(`Fkid: %d - PO No: %s - data: %s`, Po.Fkid, Po.PoNumber, datalog),
+		Sessionid,
+	)
+
 	return []PoItem{}, nil
 }
 
-func Delete(Id int) ([]PoItem, error) {
+func Delete(Sessionid string, Id int) ([]PoItem, error) {
 	sql, err := adapters.NewSql()
 	if err != nil {
 		return nil, err
 	}
 
-	query := fmt.Sprintf("UPDATE po_item SET hidden = 1 WHERE id = %d", Id)
+	var id, fkid, sequence_item, detail, size, price1, price2, qty, unit, merk, itemtype, core, roll, material string
+	query := fmt.Sprintf(`SELECT id, id_fk, item_to, detail, size, price_1, price_2, qty, unit, merk, type, core, gulungan, bahan FROM po_item where id = %d`, Id)
+	if err := sql.Connection.QueryRow(query).Scan(&id, &fkid, &sequence_item, &detail, &size, &price1, &price2, &qty, &unit, &merk, &itemtype, &core, &roll, &material); err != nil {
+		if err.Error() == `sql: no rows in result set` {
+			return nil, errors.New("invalid ID")
+		} else {
+			return nil, err
+		}
+	}
+
+	query = fmt.Sprintf("UPDATE po_item SET hidden = 1 WHERE id = %d", Id)
 	rows, err := sql.Connection.Query(query)
 	if err != nil {
 		return nil, err
 	}
 
 	defer rows.Close()
+
+	// Log capture
+	utils.Capture(
+		`PO Deleted`,
+		fmt.Sprintf(`Itemid: %d - Fkid: %s - sequence_item: %s -  detail: %s - size: %s - price1: %s - price2: %s - qty: %s - unit: %s - merk: %s - itemtype: %s - core: %s - roll: %s - material: %s`, Id, fkid, sequence_item, detail, size, price1, price2, qty, unit, merk, itemtype, core, roll, material),
+		Sessionid,
+	)
 
 	return []PoItem{}, nil
 }
@@ -1192,7 +1223,7 @@ func GetPrintView(Id int) ([]Print, error) {
 	return print, nil
 }
 
-func GetPrintNow(Id int) ([]Print, error) {
+func GetPrintNow(Sessionid string, Id int) ([]Print, error) {
 	sql, err := adapters.NewSql()
 	if err != nil {
 		return nil, err
@@ -1218,6 +1249,7 @@ func GetPrintNow(Id int) ([]Print, error) {
 	print_date := durationParse.Format(config.App.DateFormat_Print)
 
 	// print := []Print{}
+	log := map[string]string{}
 	poMap := make(map[int]*Print)
 	for rows.Next() {
 		var poId, itemId, qty, sequenceitem int
@@ -1278,6 +1310,9 @@ func GetPrintNow(Id int) ([]Print, error) {
 				Subtotal:     fmt.Sprintf("%.2f", itemSubtotal),
 			})
 		}
+
+		log["Poid"] = fmt.Sprintf(`%d`, poId)
+		log["Po No"] = ponumber
 	}
 
 	for _, po := range poMap {
@@ -1310,6 +1345,14 @@ func GetPrintNow(Id int) ([]Print, error) {
 	for _, po := range poMap {
 		print = append(print, *po)
 	}
+
+	// Log capture
+	datalog, _ := json.Marshal(log)
+	utils.Capture(
+		`PO Print`,
+		fmt.Sprintf(`Data: %s`, datalog),
+		Sessionid,
+	)
 
 	return print, nil
 }

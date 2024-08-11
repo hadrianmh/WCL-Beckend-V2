@@ -124,9 +124,8 @@ type BodyRequestSalesOrder struct {
 	PoDate       string           `json:"po_date"`
 	NoPoCustomer string           `json:"po_customer,omitempty"`
 	OrderGrade   int              `json:"order_grade"`
-	InputBy      int              `json:"input_by,omitempty"`
-	Ppn          int              `json:"ppn"`
-	Items        []SalesOrderItem `json:"so_item,omitempty"`
+	Ppn          int              `json:"tax"`
+	Items        []SalesOrderItem `json:"items,omitempty"`
 }
 
 type SalesOrderItem struct {
@@ -985,7 +984,14 @@ func DeletePurchaseOrder(ctx *gin.Context) {
 		return
 	}
 
-	delete, err := purchaseorder.Delete(id)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	delete, err := purchaseorder.Delete(sessionid.(string), id)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -1021,7 +1027,14 @@ func GetPurchaseOrder_PrintNow(ctx *gin.Context) {
 		return
 	}
 
-	get, err := purchaseorder.GetPrintNow(id)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	get, err := purchaseorder.GetPrintNow(sessionid.(string), id)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -1032,6 +1045,46 @@ func GetPurchaseOrder_PrintNow(ctx *gin.Context) {
 
 func GetSalesOrder(ctx *gin.Context) {
 	get, err := salesorder.Get(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
+		return
+	}
+
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": get})
+}
+
+func GetSalesOrder_SuggestType(ctx *gin.Context) {
+	get, err := salesorder.SuggestType(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
+		return
+	}
+
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
+}
+
+func GetSalesOrder_SuggestCustomer(ctx *gin.Context) {
+	get, err := salesorder.SuggestCustomer(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
+		return
+	}
+
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
+}
+
+func GetSalesOrder_SuggestItem(ctx *gin.Context) {
+	get, err := salesorder.SuggestItem(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
+		return
+	}
+
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
+}
+
+func GetSalesOrder_SuggestAttr(ctx *gin.Context) {
+	get, err := salesorder.SuggestAttr(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -1061,7 +1114,14 @@ func CreateSalesOrder(ctx *gin.Context) {
 		return
 	}
 
-	create, err := salesorder.Create(body)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	create, err := salesorder.Create(sessionid.(string), body)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -1127,7 +1187,14 @@ func UpdateSalesOrder_Customer(ctx *gin.Context) {
 		return
 	}
 
-	update, err := salesorder.UpdateCustomer(BodyReq.Id, BodyReq.CompanyId, BodyReq.CustomerId, BodyReq.CustomerName, BodyReq.OrderGrade, BodyReq.PoDate, BodyReq.NoPoCustomer, BodyReq.Ppn)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	update, err := salesorder.UpdateCustomer(sessionid.(string), BodyReq.Id, BodyReq.CompanyId, BodyReq.CustomerId, BodyReq.CustomerName, BodyReq.OrderGrade, BodyReq.PoDate, BodyReq.NoPoCustomer, BodyReq.Ppn)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -1157,7 +1224,14 @@ func UpdateSalesOrder_Item(ctx *gin.Context) {
 		return
 	}
 
-	update, err := salesorder.UpdateItem(BodyReq.PoitemId, BodyReq.WoitemId, BodyReq.Item, BodyReq.Size, BodyReq.UkBahanBaku, BodyReq.Qore, BodyReq.Lin, BodyReq.QtyBahanBaku, BodyReq.Roll, BodyReq.Material, BodyReq.Unit, BodyReq.Volume, BodyReq.Note, BodyReq.Price, BodyReq.Qty, BodyReq.Sources, BodyReq.Porporasi, BodyReq.Detail, BodyReq.Merk, BodyReq.Type, BodyReq.Etc1, BodyReq.Etc2)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	update, err := salesorder.UpdateItem(sessionid.(string), BodyReq.PoitemId, BodyReq.WoitemId, BodyReq.Item, BodyReq.Size, BodyReq.UkBahanBaku, BodyReq.Qore, BodyReq.Lin, BodyReq.QtyBahanBaku, BodyReq.Roll, BodyReq.Material, BodyReq.Unit, BodyReq.Volume, BodyReq.Note, BodyReq.Price, BodyReq.Qty, BodyReq.Sources, BodyReq.Porporasi, BodyReq.Detail, BodyReq.Merk, BodyReq.Type, BodyReq.Etc1, BodyReq.Etc2)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -1224,7 +1298,14 @@ func DeleteSalesOrder(ctx *gin.Context) {
 		return
 	}
 
-	delete, err := salesorder.Delete(id)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	delete, err := salesorder.Delete(sessionid.(string), id)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -1233,17 +1314,17 @@ func DeleteSalesOrder(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": delete}})
 }
 
-func GetWorkorder(ctx *gin.Context) {
+func Workorder_Get(ctx *gin.Context) {
 	get, err := workorder.Get(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
 	}
 
-	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": get})
 }
 
-func CreateWorkorder(ctx *gin.Context) {
+func Workorder_Create(ctx *gin.Context) {
 	body, err := ioutil.ReadAll(ctx.Request.Body)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": "Bad Request"}})
@@ -1264,7 +1345,14 @@ func CreateWorkorder(ctx *gin.Context) {
 		return
 	}
 
-	create, err := workorder.Create(BodyReq.Id, BodyReq.SequenceItem, BodyReq.SpkDate, BodyReq.OrderStatus, BodyReq.InputBy)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	create, err := workorder.Create(BodyReq.Id, BodyReq.SequenceItem, BodyReq.SpkDate, BodyReq.OrderStatus, sessionid.(string))
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -1273,7 +1361,56 @@ func CreateWorkorder(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": create}})
 }
 
-func GetWorkorder_Printview(ctx *gin.Context) {
+func Workorder_GetProcess(ctx *gin.Context) {
+	id := ctx.Param("id")
+	sequence_item := ctx.Param("sequence_item")
+
+	if id == `` || sequence_item == `` {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": "Bad Request"}})
+		return
+	}
+
+	get, err := workorder.GetProcess(id, sequence_item)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
+		return
+	}
+
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
+}
+
+func Workorder_CreateProcess(ctx *gin.Context) {
+	body, err := ioutil.ReadAll(ctx.Request.Body)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": "Bad Request"}})
+		return
+	}
+
+	if len(body) < 1 {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": "Bad Request"}})
+		return
+	}
+
+	// Reset the request body so it can be read again before ShouldBindJSON
+	ctx.Request.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+
+	var BodyReq SalesOrderShippingCost
+	if err := ctx.ShouldBindJSON(&BodyReq); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
+		return
+	}
+
+	// Id int, detail string, cost string, ekspedisi string, uom string, jml string
+	update, err := salesorder.UpdateShipCost(BodyReq.Id, BodyReq.Detail, BodyReq.Cost, BodyReq.Ekspedisi, BodyReq.Uom, BodyReq.Jml)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
+		return
+	}
+
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": update}})
+}
+
+func Workorder_Printview(ctx *gin.Context) {
 	idStr := ctx.Param("wocusid")
 	sequence_itemStr := ctx.Param("sequence_item")
 
@@ -1298,7 +1435,7 @@ func GetWorkorder_Printview(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
 }
 
-func GetWorkorder_Printnow(ctx *gin.Context) {
+func Workorder_Printnow(ctx *gin.Context) {
 	body, err := ioutil.ReadAll(ctx.Request.Body)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": "Bad Request"}})
