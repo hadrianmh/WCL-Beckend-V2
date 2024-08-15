@@ -7,6 +7,7 @@ import (
 	"backend/services/customer"
 	deliveryorder "backend/services/delivery_order"
 	invoice "backend/services/invoice"
+	"backend/services/metrics"
 	purchaseorder "backend/services/purchase_order"
 	salesorder "backend/services/sales_order"
 	"backend/services/sortdata"
@@ -1762,4 +1763,41 @@ func DeleteInvoice(ctx *gin.Context) {
 	}
 
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": del}})
+}
+
+func Metrics_Notification(ctx *gin.Context) {
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	get, err := metrics.Notification(sessionid.(string))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
+		return
+	}
+
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
+}
+
+func Metrics_SoTracking(ctx *gin.Context) {
+	get, err := metrics.SoTracking(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
+		return
+	}
+
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
+}
+
+func Metrics_Static(ctx *gin.Context) {
+	get, err := metrics.Static(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
+		return
+	}
+
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
 }

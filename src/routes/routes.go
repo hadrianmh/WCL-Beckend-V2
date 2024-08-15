@@ -22,6 +22,11 @@ func InitRoutes(app *gin.Engine) {
 	{
 		ApiV1Dashboard.GET("", controllers.GetDashboard)
 
+		// Metrics
+		ApiV1Dashboard.GET("/metrics/notification", controllers.Metrics_Notification)
+		ApiV1Dashboard.GET("/metrics/so-tracking", controllers.Metrics_SoTracking)
+		ApiV1Dashboard.GET("/metrics/static", controllers.Metrics_Static)
+
 		// Sortdata management
 		ApiV1Dashboard.GET("/sortdata/archive", controllers.SortData_Archive)
 		ApiV1Dashboard.GET("/sortdata/counter", controllers.SortData_Counter)
