@@ -90,9 +90,9 @@ func InitRoutes(app *gin.Engine) {
 		// Workorder Management
 		ApiV1Dashboard.GET("/workorder", controllers.Workorder_Get)
 		ApiV1Dashboard.POST("/workorder", controllers.Workorder_Create)
+		ApiV1Dashboard.GET("/workorder/process/:id/:sequence_item", controllers.Workorder_GetProcess)
 		ApiV1Dashboard.GET("/workorder/print/:wocusid/:sequence_item", controllers.Workorder_Printview)
 		ApiV1Dashboard.POST("/workorder/print", controllers.Workorder_Printnow)
-		ApiV1Dashboard.GET("/workorder/process/:id/:sequence_item", controllers.Workorder_GetProcess)
 
 		// Delivery Orders Management
 		ApiV1Dashboard.GET("/delivery-order", controllers.GetDeliveryOrder)

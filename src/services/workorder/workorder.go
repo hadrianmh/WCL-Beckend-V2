@@ -430,8 +430,6 @@ func Create(Id int, sequence_item int, spkdate string, orderstatus int, Sessioni
 	// update pd tabel status
 	queryUpdate_Status := fmt.Sprintf(`UPDATE status SET order_status = '%d' WHERE id_fk = %d AND item_to = %d`, orderstatus, id_fk, sequence_item)
 
-	fmt.Println(queryUpdate_Status)
-
 	_, err1 := tx.Exec(queryUpdate_WoCustomer)
 	if err1 != nil {
 		tx.Rollback()
@@ -655,6 +653,7 @@ func Printnow(BodyReq []byte) ([]DataTables, error) {
 		Isi:          datatables.Isi,
 		Ttd:          datatables.Ttd,
 		NoPoCustomer: datatables.NoPoCustomer,
+		QtyProd:      datatables.QtyProd,
 	})
 
 	return workorder, nil
