@@ -1026,7 +1026,6 @@ func GetShippingCost(Id int) ([]PreorderShippingCost, error) {
 				Uom:       uom,
 				Jml:       jml,
 			})
-
 		}
 	}
 
@@ -1037,23 +1036,23 @@ func GetShippingCost(Id int) ([]PreorderShippingCost, error) {
 	return preordershipcost, nil
 }
 
-func UpdateShipCost(Id int, detail string, cost string, ekspedisi string, uom string, jml string) ([]PreorderShippingCost, error) {
-	var courier, no_tracking, no_delivery string
+func UpdateShipCost(Sessionid string, Id int, cost string, ekspedisi string, uom string, jml string) ([]PreorderShippingCost, error) {
 	sql, err := adapters.NewSql()
 	if err != nil {
 		return nil, err
 	}
 
-	query1 := fmt.Sprintf(`SELECT a.courier, a.no_tracking, b.no_delivery FROM delivery_orders_customer AS a LEFT JOIN delivery_orders_item AS b ON a.id_fk = b.id_fk AND a.id_sj = b.id_sj WHERE a.id = %d GROUP BY b.no_delivery`, Id)
-
-	if err1 := sql.Connection.QueryRow(query1).Scan(&courier, &no_tracking, &no_delivery); err1 != nil {
-		return nil, fmt.Errorf("[err1] %s", err1)
+	query2 := fmt.Sprintf(`UPDATE delivery_orders_customer SET cost = '%s', ekspedisi = '%s', uom = '%s', jml = '%s' WHERE id = %d`, strings.ReplaceAll(cost, `.`, ``), ekspedisi, uom, jml, Id)
+	if _, err := sql.Connection.Query(query2); err != nil {
+		return nil, fmt.Errorf("[err] %s", err)
 	}
 
-	query2 := fmt.Sprintf(`UPDATE delivery_orders_customer SET cost = '%s', ekspedisi = '%s', uom = '%s', jml = '%s' WHERE id = %d`, cost, ekspedisi, uom, jml, Id)
-	if _, err2 := sql.Connection.Query(query2); err2 != nil {
-		return nil, fmt.Errorf("[err2] %s", err2)
-	}
+	// Log capture
+	utils.Capture(
+		`PO Updated [ongkir]`,
+		fmt.Sprintf(`DoId: %d - Cost: %s - Eksedisi: %s - Uom: %s - Jumlah: %s`, Id, cost, ekspedisi, uom, jml),
+		Sessionid,
+	)
 
 	return []PreorderShippingCost{}, nil
 }

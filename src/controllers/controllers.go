@@ -157,7 +157,6 @@ type SalesOrderItem struct {
 
 type SalesOrderShippingCost struct {
 	Id        int    `json:"id"`
-	Detail    string `json:"detail"`
 	Cost      string `json:"cost"`
 	Ekspedisi string `json:"ekspedisi"`
 	Uom       string `json:"uom"`
@@ -1328,8 +1327,15 @@ func SalesOrder_UpdateShipCost(ctx *gin.Context) {
 		return
 	}
 
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
 	// Id int, detail string, cost string, ekspedisi string, uom string, jml string
-	update, err := salesorder.UpdateShipCost(BodyReq.Id, BodyReq.Detail, BodyReq.Cost, BodyReq.Ekspedisi, BodyReq.Uom, BodyReq.Jml)
+	update, err := salesorder.UpdateShipCost(sessionid.(string), BodyReq.Id, BodyReq.Cost, BodyReq.Ekspedisi, BodyReq.Uom, BodyReq.Jml)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -1426,37 +1432,6 @@ func Workorder_GetProcess(ctx *gin.Context) {
 	}
 
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
-}
-
-func Workorder_CreateProcess(ctx *gin.Context) {
-	body, err := ioutil.ReadAll(ctx.Request.Body)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": "Bad Request"}})
-		return
-	}
-
-	if len(body) < 1 {
-		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": "Bad Request"}})
-		return
-	}
-
-	// Reset the request body so it can be read again before ShouldBindJSON
-	ctx.Request.Body = ioutil.NopCloser(bytes.NewBuffer(body))
-
-	var BodyReq SalesOrderShippingCost
-	if err := ctx.ShouldBindJSON(&BodyReq); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
-		return
-	}
-
-	// Id int, detail string, cost string, ekspedisi string, uom string, jml string
-	update, err := salesorder.UpdateShipCost(BodyReq.Id, BodyReq.Detail, BodyReq.Cost, BodyReq.Ekspedisi, BodyReq.Uom, BodyReq.Jml)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
-		return
-	}
-
-	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": update}})
 }
 
 func Workorder_Printview(ctx *gin.Context) {
