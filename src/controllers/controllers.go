@@ -119,6 +119,7 @@ type PoItem struct {
 
 type BodyRequestSalesOrder struct {
 	Id           int              `json:"poid,omitempty"`
+	FkId         int              `json:"fkid,omitempty"`
 	CompanyId    int              `json:"companyid"`
 	CustomerId   int              `json:"customerid,omitempty"`
 	CustomerName string           `json:"customer"`
@@ -1044,7 +1045,7 @@ func GetPurchaseOrder_PrintNow(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
 }
 
-func GetSalesOrder(ctx *gin.Context) {
+func SalesOrder_Get(ctx *gin.Context) {
 	get, err := salesorder.Get(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
@@ -1054,7 +1055,7 @@ func GetSalesOrder(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": get})
 }
 
-func GetSalesOrder_SuggestType(ctx *gin.Context) {
+func SalesOrder_SuggestType(ctx *gin.Context) {
 	get, err := salesorder.SuggestType(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
@@ -1064,7 +1065,7 @@ func GetSalesOrder_SuggestType(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
 }
 
-func GetSalesOrder_SuggestCustomer(ctx *gin.Context) {
+func SalesOrder_SuggestCustomer(ctx *gin.Context) {
 	get, err := salesorder.SuggestCustomer(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
@@ -1074,7 +1075,7 @@ func GetSalesOrder_SuggestCustomer(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
 }
 
-func GetSalesOrder_SuggestItem(ctx *gin.Context) {
+func SalesOrder_SuggestItem(ctx *gin.Context) {
 	get, err := salesorder.SuggestItem(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
@@ -1084,7 +1085,7 @@ func GetSalesOrder_SuggestItem(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
 }
 
-func GetSalesOrder_SuggestAttr(ctx *gin.Context) {
+func SalesOrder_SuggestAttr(ctx *gin.Context) {
 	get, err := salesorder.SuggestAttr(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
@@ -1094,7 +1095,17 @@ func GetSalesOrder_SuggestAttr(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
 }
 
-func CreateSalesOrder(ctx *gin.Context) {
+func SalesOrder_SuggestSO(ctx *gin.Context) {
+	get, err := salesorder.SuggestSO(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
+		return
+	}
+
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
+}
+
+func SalesOrder_Create(ctx *gin.Context) {
 	body, err := ioutil.ReadAll(ctx.Request.Body)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": "Bad Request"}})
@@ -1131,7 +1142,44 @@ func CreateSalesOrder(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": create}})
 }
 
-func GetSalesOrder_Customer(ctx *gin.Context) {
+func SalesOrder_AddItem(ctx *gin.Context) {
+	body, err := ioutil.ReadAll(ctx.Request.Body)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": "Bad Request"}})
+		return
+	}
+
+	if len(body) < 1 {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": "Bad Request"}})
+		return
+	}
+
+	// Reset the request body so it can be read again before ShouldBindJSON
+	ctx.Request.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+
+	var BodyReq BodyRequestSalesOrder
+	if err := ctx.ShouldBindJSON(&BodyReq); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
+		return
+	}
+
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	create, err := salesorder.AddItem(sessionid.(string), body)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
+		return
+	}
+
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": create}})
+}
+
+func SalesOrder_GetCustomer(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 
 	id, err := strconv.Atoi(idStr)
@@ -1149,7 +1197,7 @@ func GetSalesOrder_Customer(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
 }
 
-func GetSalesOrder_Item(ctx *gin.Context) {
+func SalesOrder_GetItem(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 
 	id, err := strconv.Atoi(idStr)
@@ -1167,7 +1215,7 @@ func GetSalesOrder_Item(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
 }
 
-func UpdateSalesOrder_Customer(ctx *gin.Context) {
+func SalesOrder_UpdateCustomer(ctx *gin.Context) {
 	body, err := ioutil.ReadAll(ctx.Request.Body)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": "Bad Request"}})
@@ -1204,7 +1252,7 @@ func UpdateSalesOrder_Customer(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": update}})
 }
 
-func UpdateSalesOrder_Item(ctx *gin.Context) {
+func SalesOrder_UpdateItem(ctx *gin.Context) {
 	body, err := ioutil.ReadAll(ctx.Request.Body)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": "Bad Request"}})
@@ -1241,7 +1289,7 @@ func UpdateSalesOrder_Item(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": update}})
 }
 
-func GetSalesOrder_ShipCost(ctx *gin.Context) {
+func SalesOrder_GetShipCost(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 
 	id, err := strconv.Atoi(idStr)
@@ -1259,7 +1307,7 @@ func GetSalesOrder_ShipCost(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
 }
 
-func UpdateSalesOrder_ShipCost(ctx *gin.Context) {
+func SalesOrder_UpdateShipCost(ctx *gin.Context) {
 	body, err := ioutil.ReadAll(ctx.Request.Body)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": "Bad Request"}})
@@ -1290,7 +1338,7 @@ func UpdateSalesOrder_ShipCost(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": update}})
 }
 
-func DeleteSalesOrder(ctx *gin.Context) {
+func SalesOrder_Delete(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 
 	id, err := strconv.Atoi(idStr)
@@ -1466,27 +1514,27 @@ func Workorder_Printnow(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": create}})
 }
 
-func GetDeliveryOrder(ctx *gin.Context) {
+func DeliveryOrder_Get(ctx *gin.Context) {
 	get, err := deliveryorder.Get(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
 	}
 
-	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": get})
 }
 
-func GetDeliveryOrder_Waiting(ctx *gin.Context) {
-	get, err := deliveryorder.Get(ctx)
+func DeliveryOrder_GetWaiting(ctx *gin.Context) {
+	get, err := deliveryorder.GetWaiting(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
 	}
 
-	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": get})
 }
 
-func GetDeliveryOrder_Item(ctx *gin.Context) {
+func DeliveryOrder_GetItem(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 
 	id, err := strconv.Atoi(idStr)
@@ -1504,7 +1552,7 @@ func GetDeliveryOrder_Item(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
 }
 
-func GetDeliveryOrder_Number(ctx *gin.Context) {
+func DeliveryOrder_GetNumber(ctx *gin.Context) {
 	get, err := deliveryorder.GetNumber()
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
@@ -1514,7 +1562,7 @@ func GetDeliveryOrder_Number(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
 }
 
-func CreateDeliveryOrder(ctx *gin.Context) {
+func DeliveryOrder_Create(ctx *gin.Context) {
 	body, err := ioutil.ReadAll(ctx.Request.Body)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": "Bad Request"}})
@@ -1535,7 +1583,14 @@ func CreateDeliveryOrder(ctx *gin.Context) {
 		return
 	}
 
-	create, err := deliveryorder.Create(body)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	create, err := deliveryorder.Create(sessionid.(string), body)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -1544,7 +1599,7 @@ func CreateDeliveryOrder(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": create}})
 }
 
-func DeleteDeliveryOrder(ctx *gin.Context) {
+func DeliveryOrder_Delete(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 
 	id, err := strconv.Atoi(idStr)
@@ -1562,7 +1617,7 @@ func DeleteDeliveryOrder(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": delete}})
 }
 
-func GetDeliveryOrder_Printview(ctx *gin.Context) {
+func DeliveryOrder_Printview(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 
 	id, err := strconv.Atoi(idStr)
@@ -1580,7 +1635,7 @@ func GetDeliveryOrder_Printview(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
 }
 
-func GetDeliveryOrder_Printnow(ctx *gin.Context) {
+func DeliveryOrder_Printnow(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	ttd := ctx.Param("ttd")
 

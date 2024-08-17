@@ -204,7 +204,6 @@ func SoTracking(ctx *gin.Context) ([]Datatables, error) {
 	}
 
 	query_datatables = fmt.Sprintf(`SELECT COUNT(b.id) as totalrows FROM preorder_item AS a LEFT JOIN preorder_customer AS b ON b.id_fk = a.id_fk LEFT JOIN preorder_price AS c ON c.id_fk = b.id_fk LEFT JOIN workorder_item AS d ON d.id_fk = a.id_fk AND d.item_to = a.item_to LEFT JOIN workorder_customer AS e ON e.id_fk = b.id_fk LEFT JOIN delivery_orders_item AS f ON f.id_fk = a.id_fk AND f.item_to = a.item_to LEFT JOIN delivery_orders_customer AS g ON g.id_fk = b.id_fk AND g.id_sj = f.id_sj LEFT JOIN status AS h ON h.id_fk = a.id_fk AND h.item_to = a.item_to LEFT JOIN company AS i ON i.id = b.id_company LEFT JOIN setting AS j ON j.id = d.detail WHERE b.po_date %s %s ORDER BY b.id, f.no_delivery ASC`, Report, search)
-	fmt.Println(query_datatables)
 	if err = sql.Connection.QueryRow(query_datatables).Scan(&totalrows); err != nil {
 		if err.Error() == `sql: no rows in result set` {
 			totalrows = 0
@@ -544,7 +543,6 @@ func Static(ctx *gin.Context) (interface{}, error) {
 	}
 
 	query3 := fmt.Sprintf(`SELECT COUNT(sub.jml_do) AS do_total FROM (SELECT CASE WHEN a.id > 0 THEN 1 END AS jml_do FROM delivery_orders_customer AS a LEFT JOIN status AS b ON a.id_fk = b.id_fk WHERE b.order_status BETWEEN 1 AND 2 AND a.sj_date %s GROUP BY a.id_fk) AS sub`, Report)
-	fmt.Println(query3)
 	if err = sql.Connection.QueryRow(query3).Scan(&do_total); err != nil {
 		if err.Error() == `sql: no rows in result set` {
 			inv_total = 0

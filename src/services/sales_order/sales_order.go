@@ -22,6 +22,8 @@ type Response struct {
 }
 
 type Preorder struct {
+	Id           int            `json:"poid"`
+	Fkid         int            `json:"fkid"`
 	CompanyId    int            `json:"companyid"`
 	CompanyName  string         `json:"company,omitempty"`
 	CustomerId   int            `json:"customerid,omitempty"`
@@ -124,6 +126,7 @@ type SuggestionsCustomer struct {
 	Customerid   string `json:"customerid"`
 	CustomerName string `json:"customername,omitempty"`
 	NoPoCustomer string `json:"nopocustomer,omitempty"`
+	Fkid         string `json:"fkid"`
 	Item         string `json:"item,omitempty"`
 	Label        string `json:"label"`
 	Value        string `json:"value"`
@@ -363,6 +366,9 @@ func Get(ctx *gin.Context) (Response, error) {
 			total = etd
 		}
 
+		// Parse nomor So
+		So := strings.Split(soNumber, "/")
+
 		datatables = append(datatables, DataTables{
 			Itemid:       itemId,
 			SequenceItem: sequenceItem,
@@ -381,7 +387,7 @@ func Get(ctx *gin.Context) (Response, error) {
 			OrderGrade:   orderGradeStr,
 			NoPoCustomer: customerPoNumber,
 			InputBy:      inputBy,
-			SoNumber:     soNumber,
+			SoNumber:     fmt.Sprintf(`%s/%s%s`, So[0], So[1], So[2]),
 			Qore:         qore,
 			Lin:          lin,
 			Roll:         roll,
@@ -560,6 +566,128 @@ func Create(Sessionid string, BodyReq []byte) ([]Preorder, error) {
 	utils.Capture(
 		`SO Created`,
 		fmt.Sprintf(`Customer: %s - PO No: %s - Date: %s`, preorder.CustomerName, preorder.NoPoCustomer, preorder.PoDate),
+		Sessionid,
+	)
+
+	return []Preorder{}, nil
+}
+
+func AddItem(Sessionid string, BodyReq []byte) ([]Preorder, error) {
+	var preorder Preorder
+	var soNumber, noWso string
+	var total, last_sequence_item int64
+
+	err := json.Unmarshal([]byte(BodyReq), &preorder)
+	if err != nil {
+		return nil, err
+	}
+
+	if preorder.Fkid < 1 || preorder.Id < 1 {
+		return nil, errors.New("PO ID tidak valid")
+	}
+
+	sql, err := adapters.NewSql()
+	if err != nil {
+		return nil, err
+	}
+
+	querySoNumber := `SELECT no_so FROM workorder_item ORDER BY id DESC LIMIT 1`
+	if err = sql.Connection.QueryRow(querySoNumber).Scan(&soNumber); err != nil {
+		soNumber = `WSO/1807/001` //set default data null
+	}
+
+	querySequenceItem := fmt.Sprintf(`SELECT COUNT(id) FROM preorder_item WHERE id_fk = %d`, preorder.Fkid)
+	if err = sql.Connection.QueryRow(querySequenceItem).Scan(&last_sequence_item); err != nil {
+		soNumber = `WSO/1807/001` //set default data null
+	}
+
+	tx, err := sql.Connection.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	c_time := now.Format("0601")
+
+	queryPoItem := `INSERT INTO preorder_item (id_fk, item_to, detail, item, size, price, qty, unit, input_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	stmtPoItem, err := tx.Prepare(queryPoItem)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	defer stmtPoItem.Close()
+
+	queryWoItem := `INSERT INTO workorder_item (id_fk, item_to, detail, no_so, item, size, unit, qore, lin, roll, ingredient, qty, volume, total, annotation, porporasi, uk_bahan_baku, qty_bahan_baku, sources, merk, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	stmtWoItem, err := tx.Prepare(queryWoItem)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	defer stmtWoItem.Close()
+
+	queryStatus := `INSERT INTO status (id_fk, item_to, order_status, hidden) VALUES (?, ?, ?, ?)`
+	stmtStatus, err := tx.Prepare(queryStatus)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	defer stmtStatus.Close()
+
+	fmt.Println(len(preorder.Items))
+
+	log := []map[string]string{}
+	for index, item := range preorder.Items {
+		////////// REDEFIND VARIABLE ////////////////
+		SequenceItem := int(last_sequence_item) + (index + 1)
+
+		noWso = fmt.Sprintf("WSO/%s/%03d", c_time, SequenceItem)
+
+		if item.Unit == "PCS" {
+			total = item.Qty / item.Volume
+		} else {
+			total = item.Qty * item.Volume
+		}
+
+		if item.Sources == "2" {
+			item.Sources = fmt.Sprintf("%s|%s|%s", item.Sources, strings.ReplaceAll(item.Etc1, "|", "-"), item.Etc2)
+		} else if item.Sources == "3" {
+			item.Sources = fmt.Sprintf("%s|%s", item.Sources, item.Etc1)
+		}
+
+		////////////////////////////////////
+
+		_, err1 := stmtPoItem.Exec(preorder.Fkid, SequenceItem, item.Detail, item.Item, item.Size, item.Price, item.Qty, item.Unit, item.InputBy)
+		if err1 != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("[err1] %s", err1)
+		}
+
+		_, err2 := stmtWoItem.Exec(preorder.Fkid, SequenceItem, item.Detail, noWso, item.Item, item.Size, item.Unit, item.Qore, item.Lin, item.Roll, item.Material, item.Qty, item.Volume, total, item.Note, item.Porporasi, item.UkBahanBaku, item.QtyBahanBaku, item.Sources, item.Merk, item.WoType)
+		if err2 != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("[err2] %s", err2)
+		}
+
+		_, err3 := stmtStatus.Exec(preorder.Fkid, SequenceItem, 0, 0)
+		if err3 != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("[err3] %s", err3)
+		}
+
+		log = append(log, map[string]string{
+			"sequence_item": fmt.Sprintf(`%d`, SequenceItem),
+		})
+	}
+
+	if err = tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	// Log capture
+	datalog, _ := json.Marshal(log)
+	utils.Capture(
+		`SO Created [Add Item]`,
+		fmt.Sprintf(`FkId: %d - PoId: %d - data: %s`, preorder.Fkid, preorder.Id, datalog),
 		Sessionid,
 	)
 
@@ -1159,7 +1287,7 @@ func SuggestCustomer(ctx *gin.Context) ([]SuggestionsCustomer, error) {
 		return nil, err
 	}
 
-	query := fmt.Sprintf(`SELECT a.id AS id_customer, a.nama, CASE WHEN b.po_customer IS NOT NULL THEN b.po_customer ELSE '' END AS po_customer, CASE WHEN b.id IS NOT NULL THEN b.id ELSE '' END AS id_po, CASE WHEN c.item IS NOT NULL THEN GROUP_CONCAT(c.item SEPARATOR ' - ') ELSE '' END AS item FROM customer AS a LEFT JOIN preorder_customer AS b ON a.id = b.id_customer LEFT JOIN preorder_item AS c ON c.id_fk = b.id_fk WHERE a.nama LIKE '%%%s%%' GROUP BY b.id_fk ORDER BY b.id DESC`, Keyword)
+	query := fmt.Sprintf(`SELECT a.id AS id_customer, a.nama, CASE WHEN b.po_customer IS NOT NULL THEN b.po_customer ELSE '' END AS po_customer, CASE WHEN b.id IS NOT NULL THEN b.id ELSE '' END AS id_po, CASE WHEN b.id_fk > 0 THEN b.id_fk ELSE 0 END AS id_fk, CASE WHEN c.item IS NOT NULL THEN GROUP_CONCAT(c.item SEPARATOR ' - ') ELSE '' END AS item FROM customer AS a LEFT JOIN preorder_customer AS b ON a.id = b.id_customer LEFT JOIN preorder_item AS c ON c.id_fk = b.id_fk WHERE a.nama LIKE '%%%s%%' GROUP BY b.id_fk ORDER BY b.id DESC`, Keyword)
 	rows, err := sql.Connection.Query(query)
 	if err != nil {
 		return nil, err
@@ -1169,9 +1297,9 @@ func SuggestCustomer(ctx *gin.Context) ([]SuggestionsCustomer, error) {
 
 	datas := []SuggestionsCustomer{}
 	for rows.Next() {
-		var customerid, customername, poid, nopocustomer, item string
+		var customerid, customername, poid, nopocustomer, fkid, item string
 
-		if err := rows.Scan(&customerid, &customername, &nopocustomer, &poid, &item); err != nil {
+		if err := rows.Scan(&customerid, &customername, &nopocustomer, &poid, &fkid, &item); err != nil {
 			return nil, err
 		}
 
@@ -1181,6 +1309,7 @@ func SuggestCustomer(ctx *gin.Context) ([]SuggestionsCustomer, error) {
 			NoPoCustomer: nopocustomer,
 			Poid:         poid,
 			Item:         item,
+			Fkid:         fkid,
 		})
 	}
 
@@ -1219,7 +1348,8 @@ func SuggestCustomer(ctx *gin.Context) ([]SuggestionsCustomer, error) {
 					suggestions = append(suggestions, SuggestionsCustomer{
 						Customerid: data.Customerid,
 						Poid:       data.Poid,
-						Label:      data.Item,
+						Fkid:       data.Fkid,
+						Label:      fmt.Sprintf(`No PO: %s - %s`, data.NoPoCustomer, data.Item),
 						Value:      data.CustomerName,
 						Category:   data.CustomerName,
 					})
@@ -1347,6 +1477,47 @@ func SuggestAttr(ctx *gin.Context) (interface{}, error) {
 	var isi, value string
 	query := fmt.Sprintf(`SELECT isi, value FROM setting WHERE id = %d`, IdInt)
 	err = sql.Connection.QueryRow(query).Scan(&isi, &value)
+	if err != nil {
+		if err.Error() == `sql: no rows in result set` {
+			return nil, errors.New("invalid ID")
+		} else {
+			return nil, err
+		}
+	}
+
+	// Unmarshal the JSON string into a map without struct
+	var result map[string]string
+	if err = json.Unmarshal([]byte(value), &result); err != nil {
+		return nil, err
+	}
+
+	output := map[string]string{
+		"field": result["input"],
+	}
+
+	return output, nil
+}
+
+func SuggestSO(ctx *gin.Context) (interface{}, error) {
+	Id := ctx.DefaultQuery("id", "")
+
+	IdInt, err := strconv.Atoi(Id)
+	if err != nil {
+		return nil, err
+	}
+
+	if IdInt < 1 {
+		return nil, errors.New("invalid ID")
+	}
+
+	sql, err := adapters.NewSql()
+	if err != nil {
+		return nil, err
+	}
+
+	var value string
+	query := fmt.Sprintf(`SELECT value FROM setting WHERE id = %d`, IdInt)
+	err = sql.Connection.QueryRow(query).Scan(&value)
 	if err != nil {
 		if err.Error() == `sql: no rows in result set` {
 			return nil, errors.New("invalid ID")

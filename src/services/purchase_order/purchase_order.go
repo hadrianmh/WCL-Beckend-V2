@@ -250,7 +250,7 @@ func Get(ctx *gin.Context) (Response, error) {
 
 	// id, err := strconv.Atoi(idParam)
 	// if err != nil || id < 1 {
-	query = fmt.Sprintf(`SELECT a.id AS id_po, a.po_date, a.nopo, a.note, a.ppn, a.input_by, b.vendor, c.id AS id_po_item, c.detail, c.size, c.price_1, CASE WHEN c.price_2 = '' THEN 0 ELSE price_2 END AS price_2, c.qty, c.unit, c.merk, c.type, c.core, c.gulungan, c.bahan, d.id AS userid, d.name, e.company, f.isi FROM po_customer AS a JOIN vendor AS b ON a.id_vendor = b.id JOIN (SELECT * FROM po_item WHERE hidden = 0) AS c ON a.id = c.id_fk JOIN user AS d ON a.input_by = d.id JOIN company AS e ON e.id = a.id_company JOIN setting AS f ON f.id = a.type WHERE a.po_date %s %s ORDER BY a.id DESC LIMIT %d OFFSET %d`, Report, search, limit, offset)
+	query = fmt.Sprintf(`SELECT a.id AS id_po, a.po_date, a.nopo, a.note, a.ppn, a.input_by, CASE WHEN b.vendor IS NOT NULL THEN b.vendor ELSE '' END AS vendor, c.id AS id_po_item, c.detail, c.size, c.price_1, CASE WHEN c.price_2 = '' THEN 0 ELSE price_2 END AS price_2, c.qty, c.unit, c.merk, c.type, c.core, c.gulungan, c.bahan, d.id AS userid, d.name, e.company, f.isi FROM po_customer AS a LEFT JOIN vendor AS b ON a.id_vendor = b.id LEFT JOIN (SELECT * FROM po_item WHERE hidden = 0) AS c ON a.id = c.id_fk LEFT JOIN user AS d ON a.input_by = d.id LEFT JOIN company AS e ON e.id = a.id_company LEFT JOIN setting AS f ON f.id = a.type WHERE a.po_date %s %s ORDER BY a.id DESC LIMIT %d OFFSET %d`, Report, search, limit, offset)
 
 	// } else {
 	// 	query = fmt.Sprintf(`SELECT a.id AS id_po, a.po_date, a.nopo, a.note, a.ppn, a.input_by, b.vendor, c.id AS id_po_item, c.detail, c.size, c.price_1, c.price_2, c.qty, c.unit, c.merk, c.type, c.core, c.gulungan, c.bahan, d.id AS userid, d.name, e.company, f.isi FROM po_customer AS a JOIN vendor AS b ON a.id_vendor = b.id JOIN (SELECT * FROM po_item WHERE hidden = 0) AS c ON a.id = c.id_fk JOIN user AS d ON a.input_by = d.id JOIN company AS e ON e.id = a.id_company JOIN setting AS f ON f.id = a.type WHERE a.id = %d`, id)
@@ -963,6 +963,8 @@ func Create(Sessionid string, BodyReq []byte) ([]PurchaseOrder, error) {
 
 	queueNumber := queue + 1
 
+	fmt.Println(dateNowConv)
+	fmt.Println(LastPoDateConv)
 	if dateNowConv > LastPoDateConv {
 		NoPo = fmt.Sprintf("PO %d1", dateNowConv)
 	} else {
