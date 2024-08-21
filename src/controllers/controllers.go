@@ -10,6 +10,7 @@ import (
 	"backend/services/metrics"
 	purchaseorder "backend/services/purchase_order"
 	salesorder "backend/services/sales_order"
+	"backend/services/setting"
 	"backend/services/sortdata"
 	"backend/services/user"
 	"backend/services/vendor"
@@ -106,7 +107,7 @@ type PoItem struct {
 	Detail       string `json:"detail,omitempty"`
 	Size         string `json:"size,omitempty"`
 	Price1       string `json:"price_1,omitempty" binding:"required"`
-	Price2       string `json:"price_2,omitempty"`
+	Price2       string `json:"price_2"`
 	Qty          int    `json:"qty,omitempty" binding:"required"`
 	Unit         string `json:"unit,omitempty"`
 	Merk         string `json:"merk,omitempty"`
@@ -118,8 +119,8 @@ type PoItem struct {
 }
 
 type BodyRequestSalesOrder struct {
-	Id           int              `json:"poid,omitempty"`
-	FkId         int              `json:"fkid,omitempty"`
+	Id           string           `json:"poid,omitempty"`
+	FkId         string           `json:"fkid,omitempty"`
 	CompanyId    int              `json:"companyid"`
 	CustomerId   int              `json:"customerid,omitempty"`
 	CustomerName string           `json:"customer"`
@@ -1242,7 +1243,9 @@ func SalesOrder_UpdateCustomer(ctx *gin.Context) {
 		return
 	}
 
-	update, err := salesorder.UpdateCustomer(sessionid.(string), BodyReq.Id, BodyReq.CompanyId, BodyReq.CustomerId, BodyReq.CustomerName, BodyReq.OrderGrade, BodyReq.PoDate, BodyReq.NoPoCustomer, BodyReq.Ppn)
+	Id, _ := strconv.Atoi(BodyReq.Id)
+
+	update, err := salesorder.UpdateCustomer(sessionid.(string), Id, BodyReq.CompanyId, BodyReq.CustomerId, BodyReq.CustomerName, BodyReq.OrderGrade, BodyReq.PoDate, BodyReq.NoPoCustomer, BodyReq.Ppn)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -1629,17 +1632,17 @@ func DeliveryOrder_Printnow(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
 }
 
-func GetInvoice(ctx *gin.Context) {
+func Invoice_Get(ctx *gin.Context) {
 	get, err := invoice.Get(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
 	}
 
-	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": get})
 }
 
-func CreateInvoice(ctx *gin.Context) {
+func Invoice_Create(ctx *gin.Context) {
 	body, err := ioutil.ReadAll(ctx.Request.Body)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": "Bad Request"}})
@@ -1660,7 +1663,14 @@ func CreateInvoice(ctx *gin.Context) {
 		return
 	}
 
-	create, err := invoice.Create(BodyReq.Id, BodyReq.InvoiceDate, BodyReq.InputBy)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	create, err := invoice.Create(sessionid.(string), BodyReq.Id, BodyReq.InvoiceDate)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -1824,6 +1834,16 @@ func Metrics_SoTracking(ctx *gin.Context) {
 
 func Metrics_Static(ctx *gin.Context) {
 	get, err := metrics.Static(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
+		return
+	}
+
+	ctx.JSON(200, gin.H{"code": 200, "status": "success", "response": gin.H{"data": get}})
+}
+
+func Setting_GetBank(ctx *gin.Context) {
+	get, err := setting.Bank()
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return

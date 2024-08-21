@@ -1001,6 +1001,18 @@ func Create(Sessionid string, BodyReq []byte) ([]PurchaseOrder, error) {
 	defer stmtPoItem.Close()
 
 	for index, item := range purchaseorder.Items {
+		// validate price is float
+		_, err = strconv.ParseFloat(item.Price1, 64)
+		if err != nil {
+			return nil, fmt.Errorf("price1 format not allowed")
+		}
+
+		// validate price is float
+		_, err = strconv.ParseFloat(item.Price2, 64)
+		if err != nil {
+			return nil, fmt.Errorf("price2 format not allowed")
+		}
+
 		SequenceItem := index + 1
 		_, err := stmtPoItem.Exec(AUTO_INCREMENT, SequenceItem, item.Detail, item.Size, utils.PriceFilter(item.Price1), utils.PriceFilter(item.Price2), item.Qty, item.Unit, item.Merk, item.ItemType, item.Core, item.Roll, item.Material, 0)
 		if err != nil {

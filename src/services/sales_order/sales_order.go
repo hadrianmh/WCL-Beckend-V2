@@ -22,8 +22,8 @@ type Response struct {
 }
 
 type Preorder struct {
-	Id           int            `json:"poid"`
-	Fkid         int            `json:"fkid"`
+	Id           string         `json:"poid"`
+	Fkid         string         `json:"fkid"`
 	CompanyId    int            `json:"companyid"`
 	CompanyName  string         `json:"company,omitempty"`
 	CustomerId   int            `json:"customerid,omitempty"`
@@ -206,7 +206,7 @@ func Get(ctx *gin.Context) (Response, error) {
 
 	// datatables total rows and filtered handling
 	if SearchValue != "" {
-		search = fmt.Sprintf(`AND (a.po_date LIKE '%%%s%%' OR a.nopo LIKE '%%%s%%' OR a.note LIKE '%%%s%%' OR a.ppn LIKE '%%%s%%' OR b.vendor LIKE '%%%s%%' OR c.detail LIKE '%%%s%%' OR c.size LIKE '%%%s%%' OR c.price_1 LIKE '%%%s%%' OR c.price_2 LIKE '%%%s%%' OR c.qty LIKE '%%%s%%' OR c.unit LIKE '%%%s%%' OR c.merk LIKE '%%%s%%' OR c.type LIKE '%%%s%%' OR c.core LIKE '%%%s%%' OR c.core LIKE '%%%s%%' OR c.gulungan LIKE '%%%s%%' OR c.bahan LIKE '%%%s%%' OR d.name LIKE '%%%s%%' OR e.company LIKE '%%%s%%' OR f.isi LIKE '%%%s%%')`, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue)
+		search = fmt.Sprintf(`AND (a.detail LIKE '%%%s%%' OR a.item LIKE '%%%s%%' OR a.size LIKE '%%%s%%' OR a.price LIKE '%%%s%%' OR a.qty LIKE '%%%s%%' OR a.unit LIKE '%%%s%%' OR b.customer LIKE '%%%s%%' OR b.po_date LIKE '%%%s%%' OR b.po_customer LIKE '%%%s%%' OR c.no_so LIKE '%%%s%%' OR c.qore LIKE '%%%s%%' OR c.lin LIKE '%%%s%%' OR c.roll LIKE '%%%s%%' OR c.ingredient LIKE '%%%s%%' OR c.volume LIKE '%%%s%%' OR c.annotation LIKE '%%%s%%' OR c.uk_bahan_baku LIKE '%%%s%%' OR c.qty_bahan_baku LIKE '%%%s%%' OR c.merk LIKE '%%%s%%')`, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue)
 	}
 
 	sql, err := adapters.NewSql()
@@ -279,6 +279,7 @@ func Get(ctx *gin.Context) (Response, error) {
 		(a.price * a.qty) AS etd,
 		CASE WHEN f.isi != '' THEN f.isi ELSE '' END AS isi,
 		coalesce(g.total_ongkir, "0") AS ongkir,
+		coalesce(g.id, "0") AS doid,
 		coalesce(g.id_sj, "0") AS id_sj,
 		h.company
 	FROM (SELECT * FROM preorder_item WHERE hidden = 0) AS a
@@ -293,7 +294,7 @@ func Get(ctx *gin.Context) (Response, error) {
 	LEFT JOIN
 		setting AS f ON a.detail = f.id
 	LEFT JOIN
-		(SELECT id_fk, id_sj, SUM(cost) AS total_ongkir FROM delivery_orders_customer GROUP BY id_fk) AS g ON g.id_fk = b.id_fk
+		(SELECT id, id_fk, id_sj, SUM(cost) AS total_ongkir FROM delivery_orders_customer GROUP BY id_fk) AS g ON g.id_fk = b.id_fk
 	LEFT JOIN
 		company AS h ON h.id = b.id_company
 	WHERE b.po_date %s %s ORDER BY a.id DESC LIMIT %d OFFSET %d`, Report, search, limit, offset)
@@ -306,12 +307,13 @@ func Get(ctx *gin.Context) (Response, error) {
 	defer rows.Close()
 
 	datatables := []DataTables{}
+	arrCost := []string{}
 	for rows.Next() {
 		var etd, ppn, total float64
-		var itemId, sequenceItem, detail, qty, companyid, customerid, fkid, orderGrade, inputBy, orderStatus int
+		var itemId, sequenceItem, detail, qty, companyid, customerid, fkid, orderGrade, inputBy, orderStatus, doid int
 		var poDate, itemName, size, price, unit, customerName, estDate, customerPoNumber, soNumber, qore, lin, roll, material, volume, note, ukBahanBaku, qtyBahanBaku, sources, merk, woType, isi, companyName, ongkir, sjId, userName, orderGradeStr, porporasi string
 
-		if err := rows.Scan(&itemId, &sequenceItem, &detail, &itemName, &size, &price, &qty, &unit, &companyid, &customerid, &fkid, &customerName, &poDate, &orderGrade, &customerPoNumber, &inputBy, &soNumber, &qore, &lin, &roll, &material, &volume, &note, &porporasi, &ukBahanBaku, &qtyBahanBaku, &sources, &merk, &woType, &ppn, &orderStatus, &etd, &isi, &ongkir, &sjId, &companyName); err != nil {
+		if err := rows.Scan(&itemId, &sequenceItem, &detail, &itemName, &size, &price, &qty, &unit, &companyid, &customerid, &fkid, &customerName, &poDate, &orderGrade, &customerPoNumber, &inputBy, &soNumber, &qore, &lin, &roll, &material, &volume, &note, &porporasi, &ukBahanBaku, &qtyBahanBaku, &sources, &merk, &woType, &ppn, &orderStatus, &etd, &isi, &ongkir, &doid, &sjId, &companyName); err != nil {
 			return Response{}, err
 		}
 
@@ -369,6 +371,11 @@ func Get(ctx *gin.Context) (Response, error) {
 		// Parse nomor So
 		So := strings.Split(soNumber, "/")
 
+		// Filtering output cost to except dupe
+		if utils.InArray(arrCost, fmt.Sprintf(`%d`, doid)) {
+			ongkir = `0`
+		}
+
 		datatables = append(datatables, DataTables{
 			Itemid:       itemId,
 			SequenceItem: sequenceItem,
@@ -410,6 +417,8 @@ func Get(ctx *gin.Context) (Response, error) {
 			Ppn:          fmt.Sprintf(`%.2f`, ppn),
 			Total:        fmt.Sprintf(`%.2f`, total),
 		})
+
+		arrCost = append(arrCost, fmt.Sprintf(`%d`, doid))
 	}
 
 	if err := rows.Err(); err != nil {
@@ -498,6 +507,12 @@ func Create(Sessionid string, BodyReq []byte) ([]Preorder, error) {
 	defer stmtStatus.Close()
 
 	for index, item := range preorder.Items {
+		// validate price is float
+		_, err := strconv.ParseFloat(item.Price, 64)
+		if err != nil {
+			return nil, fmt.Errorf("price format not allowed")
+		}
+
 		////////// REDEFIND VARIABLE ////////////////
 		SequenceItem := index + 1
 
@@ -582,7 +597,9 @@ func AddItem(Sessionid string, BodyReq []byte) ([]Preorder, error) {
 		return nil, err
 	}
 
-	if preorder.Fkid < 1 || preorder.Id < 1 {
+	Fkid, _ := strconv.Atoi(preorder.Fkid)
+	Id, _ := strconv.Atoi(preorder.Id)
+	if Fkid < 1 || Id < 1 {
 		return nil, errors.New("PO ID tidak valid")
 	}
 
@@ -596,7 +613,7 @@ func AddItem(Sessionid string, BodyReq []byte) ([]Preorder, error) {
 		soNumber = `WSO/1807/001` //set default data null
 	}
 
-	querySequenceItem := fmt.Sprintf(`SELECT COUNT(id) FROM preorder_item WHERE id_fk = %d`, preorder.Fkid)
+	querySequenceItem := fmt.Sprintf(`SELECT COUNT(id) FROM preorder_item WHERE id_fk = %s`, preorder.Fkid)
 	if err = sql.Connection.QueryRow(querySequenceItem).Scan(&last_sequence_item); err != nil {
 		soNumber = `WSO/1807/001` //set default data null
 	}
@@ -637,6 +654,12 @@ func AddItem(Sessionid string, BodyReq []byte) ([]Preorder, error) {
 
 	log := []map[string]string{}
 	for index, item := range preorder.Items {
+		// validate price is float
+		_, err := strconv.ParseFloat(item.Price, 64)
+		if err != nil {
+			return nil, fmt.Errorf("price format not allowed")
+		}
+
 		////////// REDEFIND VARIABLE ////////////////
 		SequenceItem := int(last_sequence_item) + (index + 1)
 
@@ -687,7 +710,7 @@ func AddItem(Sessionid string, BodyReq []byte) ([]Preorder, error) {
 	datalog, _ := json.Marshal(log)
 	utils.Capture(
 		`SO Created [Add Item]`,
-		fmt.Sprintf(`FkId: %d - PoId: %d - data: %s`, preorder.Fkid, preorder.Id, datalog),
+		fmt.Sprintf(`FkId: %s - PoId: %s - data: %s`, preorder.Fkid, preorder.Id, datalog),
 		Sessionid,
 	)
 
@@ -981,7 +1004,7 @@ func GetShippingCost(Id int) ([]PreorderShippingCost, error) {
 		return nil, err
 	}
 
-	query := fmt.Sprintf(`SELECT a.id, a.courier, a.no_tracking, a.cost, a.ekspedisi, a.uom, a.jml, b.no_delivery, b.send_qty FROM delivery_orders_customer AS a LEFT JOIN delivery_orders_item AS b ON a.id_fk = b.id_fk AND a.id_sj = b.id_sj WHERE a.id_fk = %d GROUP BY b.no_delivery ORDER BY b.no_delivery ASC`, Id)
+	query := fmt.Sprintf(`SELECT a.id, a.courier, a.no_tracking, a.cost, a.ekspedisi, a.uom, a.jml, b.no_delivery, b.send_qty FROM delivery_orders_customer AS a LEFT JOIN (SELECT id_fk, no_delivery, send_qty FROM delivery_orders_item WHERE id_fk = %d GROUP BY no_delivery) AS b ON a.id_fk = b.id_fk WHERE a.id_fk = %d GROUP BY a.id ORDER BY b.no_delivery ASC;`, Id, Id)
 
 	rows, err := sql.Connection.Query(query)
 	if err != nil {

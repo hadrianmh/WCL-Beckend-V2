@@ -107,13 +107,16 @@ func InitRoutes(app *gin.Engine) {
 		ApiV1Dashboard.GET("/delivery-order/printnow/:id", controllers.DeliveryOrder_Printnow)
 
 		// Invoice Management
-		ApiV1Dashboard.GET("/invoice", controllers.GetInvoice)
-		ApiV1Dashboard.POST("/invoice", controllers.CreateInvoice)
+		ApiV1Dashboard.GET("/invoice", controllers.Invoice_Get)
+		ApiV1Dashboard.POST("/invoice", controllers.Invoice_Create)
 		ApiV1Dashboard.GET("/invoice/print/:id", controllers.GetInvoice_Printview)
 		ApiV1Dashboard.POST("/invoice/print", controllers.GetInvoice_Printnow)
 		ApiV1Dashboard.POST("/invoice/paid", controllers.PaidInvoice)
 		ApiV1Dashboard.PUT("/invoice/unpaid", controllers.UnpaidInvoice)
 		ApiV1Dashboard.DELETE("/invoice/:id", controllers.DeleteInvoice)
+
+		// Setting
+		ApiV1Dashboard.GET("/setting/bank", controllers.Setting_GetBank)
 
 	}
 

@@ -664,7 +664,7 @@ func Create(Sessionid string, BodyReq []byte) ([]DeliveryOrders, error) {
 	}
 
 	// check id_sj berdasarkan id_fk
-	query = fmt.Sprintf("SELECT id_sj FROM delivery_orders_customer WHERE id_fk = %d ORDER BY id DESC LIMIT 1", deliveryorder.Id)
+	query = fmt.Sprintf("SELECT COUNT(id_sj) AS id_sj FROM delivery_orders_customer WHERE id_fk = %d ORDER BY id DESC LIMIT 1", id_fk)
 	err = sql.Connection.QueryRow(query).Scan(&id_sj)
 	if err != nil {
 		if err.Error() == `sql: no rows in result set` {
@@ -890,6 +890,9 @@ func Printnow(Id int, ttd string) ([]DeliveryOrders, error) {
 
 		ItemUpperStr := strings.ToUpper(item)
 
+		// Parse nomor SO
+		exnoSo := strings.Split(no_so, "/")
+
 		deliveryorder = append(deliveryorder, DeliveryOrders{
 			Item:         ItemUpperStr,
 			Qty:          send_qty,
@@ -900,7 +903,7 @@ func Printnow(Id int, ttd string) ([]DeliveryOrders, error) {
 			CustomerName: customername,
 			Shipto:       shipto,
 			Ttd:          ttd,
-			NoSo:         no_so,
+			NoSo:         fmt.Sprintf(`%s/%s%s`, exnoSo[0], exnoSo[1], exnoSo[2]),
 			CompanyName:  company,
 			Address:      address,
 			Phone:        phone,

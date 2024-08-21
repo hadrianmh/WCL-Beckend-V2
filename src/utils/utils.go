@@ -19,9 +19,7 @@ func StrReplaceAll(str string, rm string, strAppend string) string {
 }
 
 func PriceFilter(price string) string {
-	filter1 := strings.ReplaceAll(price, ".", "")
-	filter2 := strings.ReplaceAll(filter1, ",", ".")
-	return filter2
+	return strings.ReplaceAll(price, ",", ".")
 }
 
 func InArray(str []string, value string) bool {
