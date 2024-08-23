@@ -860,6 +860,12 @@ func Printnow(Id int, ttd string) ([]DeliveryOrders, error) {
 	var no_delivery string
 	var id_fk, sequence_item int64
 
+	// Load Config
+	config, err := config.LoadConfig("./config.json")
+	if err != nil {
+		return nil, fmt.Errorf("[err3] %s", err)
+	}
+
 	sql, err := adapters.NewSql()
 	if err != nil {
 		return nil, err
@@ -893,11 +899,18 @@ func Printnow(Id int, ttd string) ([]DeliveryOrders, error) {
 		// Parse nomor SO
 		exnoSo := strings.Split(no_so, "/")
 
+		// Formating Workorder date
+		SjDateParse, err := time.Parse(config.App.DateFormat_Global, sj_date)
+		SjDate := SjDateParse.Format(config.App.DateFormat_Print)
+		if err != nil {
+			return nil, err
+		}
+
 		deliveryorder = append(deliveryorder, DeliveryOrders{
 			Item:         ItemUpperStr,
 			Qty:          send_qty,
 			Unit:         unit,
-			SjDate:       sj_date,
+			SjDate:       SjDate,
 			NoPoCustomer: nopocustomer,
 			NoSj:         no_sj,
 			CustomerName: customername,

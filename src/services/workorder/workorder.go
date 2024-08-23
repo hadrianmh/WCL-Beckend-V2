@@ -628,7 +628,20 @@ func Printview(Wocusid int, Sequenceitem int) ([]DataTables, error) {
 func Printnow(BodyReq []byte) ([]DataTables, error) {
 	var datatables DataTables
 
-	err := json.Unmarshal([]byte(BodyReq), &datatables)
+	// Load Config
+	config, err := config.LoadConfig("./config.json")
+	if err != nil {
+		return nil, fmt.Errorf("[err3] %s", err)
+	}
+
+	err = json.Unmarshal([]byte(BodyReq), &datatables)
+	if err != nil {
+		return nil, err
+	}
+
+	// Formating Workorder date
+	SpkDateParse, err := time.Parse(config.App.DateFormat_Global, datatables.SpkDate)
+	SpkDate := SpkDateParse.Format(config.App.DateFormat_Print)
 	if err != nil {
 		return nil, err
 	}
@@ -637,7 +650,7 @@ func Printnow(BodyReq []byte) ([]DataTables, error) {
 	workorder := []DataTables{}
 	workorder = append(workorder, DataTables{
 		DateNow:      datatables.DateNow,
-		SpkDate:      datatables.SpkDate,
+		SpkDate:      SpkDate,
 		CustomerName: datatables.CustomerName,
 		NoSpk:        datatables.NoSpk,
 		Note:         datatables.Note,

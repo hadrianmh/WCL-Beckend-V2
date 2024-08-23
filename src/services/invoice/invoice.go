@@ -599,7 +599,7 @@ func Printview(Id int) ([]Datatables, error) {
 	return datatables, nil
 }
 
-func Printnow(BodyReq []byte) ([]Datatables, error) {
+func Printnow(Sessionid string, BodyReq []byte) ([]Datatables, error) {
 	var data Datatables
 	if err := json.Unmarshal([]byte(BodyReq), &data); err != nil {
 		return nil, err
@@ -636,9 +636,17 @@ func Printnow(BodyReq []byte) ([]Datatables, error) {
 	}
 	exBank := strings.Split(data.BankDetail, `-`)
 
+	// Formating invoice date
+	InvoiceDateParse, err := time.Parse(config.App.DateFormat_Global, data.InvoiceDate)
+	InvoiceDate := InvoiceDateParse.Format(config.App.DateFormat_Print)
+	if err != nil {
+		return nil, err
+	}
+
 	// Generate estimasi +30 hari invoice
-	durationParse, err := time.Parse(config.App.DateFormat_Global, duration)
-	Duration := durationParse.Format(config.App.DateFormat_Print)
+	durationParse, err := time.Parse(config.App.DateFormat_Global, data.InvoiceDate)
+	estDate := durationParse.AddDate(0, 0, 30)
+	Duration := estDate.Format(config.App.DateFormat_Print)
 	if err != nil {
 		return nil, err
 	}
@@ -649,7 +657,7 @@ func Printnow(BodyReq []byte) ([]Datatables, error) {
 		Phone:        data.Phone,
 		CustomerName: data.CustomerName,
 		NoInvoice:    data.NoInvoice,
-		InvoiceDate:  data.InvoiceDate,
+		InvoiceDate:  InvoiceDate,
 		SPhone:       data.SPhone,
 		BankAccount:  exBank[2],
 		BankNumber:   exBank[1],
@@ -662,9 +670,9 @@ func Printnow(BodyReq []byte) ([]Datatables, error) {
 		Logo:         logo,
 		Email:        email,
 		NoPoCustomer: data.NoPoCustomer,
+		Ttd:          data.Ttd,
 	}
 
-	fmt.Println(data.NoPoCustomer)
 	var
 	// totalPpn,
 	totalCost, subTotal float64
@@ -699,15 +707,15 @@ func Printnow(BodyReq []byte) ([]Datatables, error) {
 
 	// Log capture
 	utils.Capture(
-		`Print Invoice`,
+		`Invoice Print`,
 		fmt.Sprintf(`Customer: %s - Invoice: %s - Total: Rp %.2f - Bank: %s`, data.CustomerName, data.NoInvoice, StatusPpnFloat+subTotal, data.BankDetail),
-		data.Ttd,
+		Sessionid,
 	)
 
 	return []Datatables{datatables}, nil
 }
 
-func Paid(id string, date string, note string) ([]Datatables, error) {
+func Paid(Sessionid string, id string, date string, note string) ([]Datatables, error) {
 	var invoice_date, no_invoice, no_delivery, customername string
 	sql, err := adapters.NewSql()
 	if err != nil {
@@ -723,7 +731,7 @@ func Paid(id string, date string, note string) ([]Datatables, error) {
 		}
 	}
 
-	query = fmt.Sprintf(`UPDATE invoice SET status = 1, complete_date = '%s', note = '%s' WHERE id = '%s'`, invoice_date, note, id)
+	query = fmt.Sprintf(`UPDATE invoice SET status = 1, complete_date = '%s', note = '%s' WHERE no_invoice = '%s'`, invoice_date, note, no_invoice)
 
 	rows, err := sql.Connection.Query(query)
 	if err != nil {
@@ -731,11 +739,18 @@ func Paid(id string, date string, note string) ([]Datatables, error) {
 	}
 	defer rows.Close()
 
+	// Log capture
+	utils.Capture(
+		`Invoice Paid`,
+		fmt.Sprintf(`Customer: %s - No Invoice: %s - No Delivery: %s - Invoice Date: %s`, customername, no_invoice, no_delivery, invoice_date),
+		Sessionid,
+	)
+
 	return []Datatables{}, nil
 
 }
 
-func UnPaid(id string) ([]Datatables, error) {
+func UnPaid(Sessionid string, id string) ([]Datatables, error) {
 	var invoice_date, no_invoice, no_delivery, customername string
 	sql, err := adapters.NewSql()
 	if err != nil {
@@ -751,7 +766,7 @@ func UnPaid(id string) ([]Datatables, error) {
 		}
 	}
 
-	query = fmt.Sprintf(`UPDATE invoice SET status = 0, complete_date = '', note = '' WHERE id = '%s'`, id)
+	query = fmt.Sprintf(`UPDATE invoice SET status = 0, complete_date = '', note = '' WHERE no_invoice = '%s'`, no_invoice)
 
 	rows, err := sql.Connection.Query(query)
 	if err != nil {
@@ -759,11 +774,18 @@ func UnPaid(id string) ([]Datatables, error) {
 	}
 	defer rows.Close()
 
+	// Log capture
+	utils.Capture(
+		`Invoice Paid`,
+		fmt.Sprintf(`Customer: %s - No Invoice: %s - No Delivery: %s - Invoice Date: %s`, customername, no_invoice, no_delivery, invoice_date),
+		Sessionid,
+	)
+
 	return []Datatables{}, nil
 
 }
 
-func Delete(id int) ([]Datatables, error) {
+func Delete(Sessionid string, id int) ([]Datatables, error) {
 	var no_invoice string
 	sql, err := adapters.NewSql()
 	if err != nil {
@@ -785,6 +807,13 @@ func Delete(id int) ([]Datatables, error) {
 		return nil, err
 	}
 	defer rows.Close()
+
+	// Log capture
+	utils.Capture(
+		`Invoice Paid`,
+		fmt.Sprintf(`No Invoice: %s`, no_invoice),
+		Sessionid,
+	)
 
 	return []Datatables{}, nil
 }

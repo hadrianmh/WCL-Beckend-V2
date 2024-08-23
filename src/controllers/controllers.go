@@ -1718,7 +1718,14 @@ func GetInvoice_Printnow(ctx *gin.Context) {
 		return
 	}
 
-	create, err := invoice.Printnow(body)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	create, err := invoice.Printnow(sessionid.(string), body)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -1748,7 +1755,14 @@ func PaidInvoice(ctx *gin.Context) {
 		return
 	}
 
-	paid, err := invoice.Paid(BodyReq.Id, BodyReq.InvoiceDate, BodyReq.Note)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	paid, err := invoice.Paid(sessionid.(string), BodyReq.Id, BodyReq.InvoiceDate, BodyReq.Note)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -1778,7 +1792,14 @@ func UnpaidInvoice(ctx *gin.Context) {
 		return
 	}
 
-	unpaid, err := invoice.UnPaid(BodyReq.Id)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	unpaid, err := invoice.UnPaid(sessionid.(string), BodyReq.Id)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return
@@ -1796,7 +1817,14 @@ func DeleteInvoice(ctx *gin.Context) {
 		return
 	}
 
-	del, err := invoice.Delete(id)
+	// Validation userid from access_token set in context as uniqid
+	sessionid, exists := ctx.Get("uniqid")
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusUnauthorized, "status": "error", "response": gin.H{"message": "invalid token"}})
+		return
+	}
+
+	del, err := invoice.Delete(sessionid.(string), id)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "status": "error", "response": gin.H{"message": err.Error()}})
 		return

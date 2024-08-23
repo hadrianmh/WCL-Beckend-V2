@@ -8,7 +8,7 @@
         "jwt_token_exp_minutes" : 60,
         "jwt_reftoken_exp_days": 1,
         "dateformat_monthlyreport": "2006/01",
-        "dateformat_print": "02 January 2006",
+        "dateformat_print": "02/01/2006",
         "dateformat_global": "2006-01-02",
         "dateformat_timestamp": "2006-01-02 15:04:05",
         "dateformat_frontend": "02/01/2006",
