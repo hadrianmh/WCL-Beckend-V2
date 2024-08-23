@@ -15,6 +15,7 @@ func InitRoutes(app *gin.Engine) {
 	ApiV1.GET("/", controllers.Home)
 	ApiV1.GET("/ping", controllers.Ping)
 	ApiV1.POST("/auth", controllers.Auth)
+	ApiV1.POST("/register", controllers.CreateUser)
 
 	// Dashboard v1
 	ApiV1Dashboard := route.Group("api/v1/dashboard")
