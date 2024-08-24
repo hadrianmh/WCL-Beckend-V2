@@ -464,7 +464,24 @@ func SuggestVendor(ctx *gin.Context) ([]SuggestionsVendor, error) {
 
 			} else {
 
-				if prevValue != vendor {
+				if prevValue == "" {
+					suggestions = append(suggestions, SuggestionsVendor{
+						Vendorid: data.Vendorid,
+						Poid:     ``,
+						Label:    `Buat preorder baru`,
+						Value:    data.VendorName,
+						Category: data.VendorName,
+					})
+
+					suggestions = append(suggestions, SuggestionsVendor{
+						Vendorid: data.Vendorid,
+						Poid:     data.Poid,
+						Label:    fmt.Sprintf(`[%s] - %s`, data.Isi, data.Detail),
+						Value:    data.VendorName,
+						Category: data.VendorName,
+					})
+
+				} else if prevValue == vendor {
 					suggestions = append(suggestions, SuggestionsVendor{
 						Vendorid: data.Vendorid,
 						Poid:     ``,

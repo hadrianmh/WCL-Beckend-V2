@@ -1357,7 +1357,8 @@ func SuggestCustomer(ctx *gin.Context) ([]SuggestionsCustomer, error) {
 
 			} else {
 
-				if prevValue != customer {
+				if prevValue == "" {
+
 					suggestions = append(suggestions, SuggestionsCustomer{
 						Customerid: data.Customerid,
 						Poid:       ``,
@@ -1366,12 +1367,30 @@ func SuggestCustomer(ctx *gin.Context) ([]SuggestionsCustomer, error) {
 						Category:   data.CustomerName,
 					})
 
-				} else {
 					suggestions = append(suggestions, SuggestionsCustomer{
 						Customerid: data.Customerid,
 						Poid:       data.Poid,
 						Fkid:       data.Fkid,
 						Label:      fmt.Sprintf(`No PO: %s - %s`, data.NoPoCustomer, data.Item),
+						Value:      data.CustomerName,
+						Category:   data.CustomerName,
+					})
+
+				} else if prevValue == customer {
+					suggestions = append(suggestions, SuggestionsCustomer{
+						Customerid: data.Customerid,
+						Poid:       data.Poid,
+						Fkid:       data.Fkid,
+						Label:      fmt.Sprintf(`No PO: %s - %s`, data.NoPoCustomer, data.Item),
+						Value:      data.CustomerName,
+						Category:   data.CustomerName,
+					})
+
+				} else {
+					suggestions = append(suggestions, SuggestionsCustomer{
+						Customerid: data.Customerid,
+						Poid:       ``,
+						Label:      `Buat sales baru`,
 						Value:      data.CustomerName,
 						Category:   data.CustomerName,
 					})
