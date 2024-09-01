@@ -67,6 +67,7 @@ type DataTables struct {
 	SatuanUnit   string  `json:"satuanunit,omitempty"`
 	DateNow      string  `json:"tgl,omitempty"`
 	Ttd          string  `json:"ttd,omitempty"`
+	Username     string  `json:"username"`
 }
 
 type WorkorderItem struct {
@@ -206,12 +207,15 @@ func Get(ctx *gin.Context) (Response, error) {
 		b.merk,
 		b.type,
 		c.order_status,
-		a.id AS id_customer
+		a.id AS id_customer,
+		e.name
 	FROM workorder_customer AS a
 	LEFT JOIN
 		workorder_item AS b ON a.id_fk = b.id_fk
 	LEFT JOIN
 		status AS c ON a.id_fk = c.id_fk AND b.item_to = c.item_to
+	LEFT JOIN
+		user AS e ON a.input_by = e.id
 	WHERE
 		a.po_date %s %s ORDER BY b.id DESC LIMIT %d OFFSET %d`, Report, search, limit, offset)
 
@@ -226,9 +230,9 @@ func Get(ctx *gin.Context) (Response, error) {
 	for rows.Next() {
 		var volume float64
 		var wocusid, fkid, customerid, inputby, woitemid, sequence_item, detail, qty, total int
-		var podate, spk_date, duration, nopocustomer, customername, so_no, itemname, size, unit, qore, lin, roll, material, note, ukBahanBaku, qtyBahanBaku, sources, merk, woType, porporasi, orderStatus string
+		var podate, spk_date, duration, nopocustomer, customername, so_no, itemname, size, unit, qore, lin, roll, material, note, ukBahanBaku, qtyBahanBaku, sources, merk, woType, porporasi, orderStatus, username string
 
-		if err := rows.Scan(&wocusid, &fkid, &podate, &spk_date, &duration, &nopocustomer, &customername, &inputby, &woitemid, &sequence_item, &detail, &so_no, &itemname, &size, &unit, &qore, &lin, &roll, &material, &qty, &volume, &total, &note, &porporasi, &ukBahanBaku, &qtyBahanBaku, &sources, &merk, &woType, &orderStatus, &customerid); err != nil {
+		if err := rows.Scan(&wocusid, &fkid, &podate, &spk_date, &duration, &nopocustomer, &customername, &inputby, &woitemid, &sequence_item, &detail, &so_no, &itemname, &size, &unit, &qore, &lin, &roll, &material, &qty, &volume, &total, &note, &porporasi, &ukBahanBaku, &qtyBahanBaku, &sources, &merk, &woType, &orderStatus, &customerid, &username); err != nil {
 			return Response{}, err
 		}
 
@@ -364,6 +368,7 @@ func Get(ctx *gin.Context) (Response, error) {
 			OrderStatus:  orderStatus,
 			CustomerId:   customerid,
 			NoSpk:        fmt.Sprintf(`%s/%s%s`, noSpk[0], noSpk[1], noSpk[2]),
+			Username:     username,
 		})
 	}
 
