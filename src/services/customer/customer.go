@@ -70,6 +70,8 @@ func Get(ctx *gin.Context) (Response, error) {
 		return Response{}, err
 	}
 
+	defer sql.Connection.Close()
+
 	Id, err := strconv.Atoi(idParam)
 	if err != nil || Id < 1 {
 		// datatables total rows and filtered handling
@@ -187,6 +189,8 @@ func Create(Sessionid string, CustomerName string, Address string, City string, 
 		return nil, err
 	}
 
+	defer sql.Connection.Close()
+
 	query := fmt.Sprintf("SELECT id FROM customer WHERE nama = '%s' LIMIT 1", CustomerName)
 	rows, err := sql.Connection.Query(query)
 	if err != nil {
@@ -223,6 +227,8 @@ func Update(Sessionid string, Id int, CustomerName string, Address string, City 
 	if err != nil {
 		return nil, err
 	}
+
+	defer sql.Connection.Close()
 
 	query_id := fmt.Sprintf("SELECT id FROM customer WHERE id = '%d' LIMIT 1", Id)
 	rows_id, err := sql.Connection.Query(query_id)
@@ -275,6 +281,8 @@ func Delete(Sessionid string, Id int) ([]Customer, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	defer sql.Connection.Close()
 
 	var customer, address, phone string
 	query_id := fmt.Sprintf(`SELECT nama, alamat, telp FROM customer WHERE id = %d LIMIT 1`, Id)

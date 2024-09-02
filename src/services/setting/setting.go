@@ -13,6 +13,9 @@ func Bank() ([]DataBank, error) {
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	query := `SELECT id,isi FROM setting WHERE ket = 'BANK'`
 	rows, err := sql.Connection.Query(query)
 	if err != nil {

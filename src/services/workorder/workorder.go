@@ -152,6 +152,9 @@ func Get(ctx *gin.Context) (Response, error) {
 		return Response{}, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	query_datatables = fmt.Sprintf(`SELECT
 	COUNT(b.id)
 	FROM workorder_customer AS a
@@ -393,6 +396,9 @@ func Create(Id int, sequence_item int, spkdate string, orderstatus int, Sessioni
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	// ambil id_fk pada tabel workorder_customer
 	query_id := fmt.Sprintf("SELECT id_fk FROM workorder_customer WHERE id = '%d' LIMIT 1", Id)
 	if err = sql.Connection.QueryRow(query_id).Scan(&id_fk); err != nil {
@@ -467,6 +473,9 @@ func GetProcess(Id string, SequenceItem string) ([]WorkorderItem, error) {
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	query := fmt.Sprintf(`SELECT a.po_date, a.spk_date, a.po_customer, a.customer, b.order_status, c.no_so FROM workorder_customer AS a LEFT JOIN status AS b ON a.id_fk = b.id_fk LEFT JOIN workorder_item AS c ON c.id_fk = a.id_fk WHERE a.id = '%s' AND b.item_to = '%s' AND c.item_to = '%s'`, Id, SequenceItem, SequenceItem)
 
 	rows, err := sql.Connection.Query(query)
@@ -513,6 +522,9 @@ func Printview(Wocusid int, Sequenceitem int) ([]DataTables, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	query := fmt.Sprintf(`SELECT a.id AS wocusid, a.id_fk, a.po_date, a.spk_date, a.duration, a.po_customer, a.customer, a.input_by, b.id AS woitemid, b.item_to, b.detail, b.no_so, b.item, b.size, b.unit, b.qore, b.lin, b.roll, b.ingredient, b.qty, b.volume, b.total, b.annotation, b.porporasi, b.uk_bahan_baku, b.qty_bahan_baku, CASE WHEN b.sources > 0 THEN b.sources ELSE 0 END AS sources, b.merk, b.type FROM workorder_customer AS a LEFT JOIN workorder_item AS b ON a.id_fk = b.id_fk LEFT JOIN status AS c ON a.id_fk = c.id_fk AND b.item_to = c.item_to WHERE a.id = %d AND b.item_to = %d`, Wocusid, Sequenceitem)
 

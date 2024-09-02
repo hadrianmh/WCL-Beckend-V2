@@ -59,6 +59,9 @@ func Get(ctx *gin.Context) (Response, error) {
 		return Response{}, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	id, err := strconv.Atoi(idParam)
 	if err != nil || id < 1 {
 		// datatables total rows and filtered handling
@@ -163,6 +166,9 @@ func Create(Name string, Email string, Password string, Role int, Status int, Ac
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	query := fmt.Sprintf("SELECT id FROM user WHERE email = '%s' LIMIT 1", Email)
 	rows, err := sql.Connection.Query(query)
 	if err != nil {
@@ -192,6 +198,9 @@ func Update(Id int, Name string, Email string, Role int, Status int, Account int
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	query_id := fmt.Sprintf("SELECT id FROM user WHERE id = '%d' LIMIT 1", Id)
 	rows_id, err := sql.Connection.Query(query_id)
@@ -236,6 +245,9 @@ func Delete(Id int) ([]User, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	query_id := fmt.Sprintf("SELECT id FROM user WHERE id = %d LIMIT 1", Id)
 	rows_id, err := sql.Connection.Query(query_id)

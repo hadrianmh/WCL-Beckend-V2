@@ -233,6 +233,9 @@ func Get(ctx *gin.Context) (Response, error) {
 		return Response{}, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	query_datatables = fmt.Sprintf(`SELECT COUNT(a.id) as totalrows FROM po_customer AS a JOIN vendor AS b ON a.id_vendor = b.id JOIN (SELECT * FROM po_item WHERE hidden = 0) AS c ON a.id = c.id_fk JOIN user AS d ON a.input_by = d.id JOIN company AS e ON e.id = a.id_company JOIN setting AS f ON f.id = a.type WHERE a.po_date %s %s ORDER BY a.id DESC`, Report, search)
 	if err = sql.Connection.QueryRow(query_datatables).Scan(&totalrows); err != nil {
 		if err.Error() == `sql: no rows in result set` {
@@ -415,6 +418,9 @@ func SuggestVendor(ctx *gin.Context) ([]SuggestionsVendor, error) {
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	query := fmt.Sprintf(`SELECT a.id AS id_vendor, a.vendor, CASE WHEN b.id != '' THEN b.id ELSE '' END AS id_po, CASE WHEN b.nopo != '' THEN b.nopo ELSE '' END AS nopo, CASE WHEN b.type != '' THEN b.type ELSE '' END AS type, CASE WHEN c.detail != '' THEN GROUP_CONCAT(c.detail SEPARATOR ' - ') ELSE '' END AS detail, CASE WHEN d.isi != '' THEN d.isi ELSE '' END AS isi FROM vendor AS a LEFT JOIN po_customer AS b ON a.id = b.id_vendor LEFT JOIN po_item AS c ON c.id_fk = b.id LEFT JOIN setting AS d ON d.id = b.type WHERE a.vendor LIKE '%%%s%%' GROUP BY b.id ORDER BY a.id DESC`, Keyword)
 	rows, err := sql.Connection.Query(query)
 	if err != nil {
@@ -540,6 +546,9 @@ func SuggestItem(ctx *gin.Context) ([]SuggestionsItem, error) {
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	var item_type, value string
 	query := fmt.Sprintf(`SELECT a.type, b.value FROM po_customer AS a LEFT JOIN setting AS b ON b.id = a.type WHERE a.id = %d`, Po)
 
@@ -616,6 +625,9 @@ func SuggestType(ctx *gin.Context) ([]SuggestionsType, error) {
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	query := `SELECT id, isi FROM setting WHERE ket ='PO_ITEM'`
 	rows, err := sql.Connection.Query(query)
 	if err != nil {
@@ -662,6 +674,9 @@ func SuggestAttr(ctx *gin.Context) (interface{}, error) {
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	var value string
 	query := fmt.Sprintf(`SELECT value FROM setting WHERE id = %d`, IdInt)
 	err = sql.Connection.QueryRow(query).Scan(&value)
@@ -693,6 +708,9 @@ func SuggestPO(ctx *gin.Context) ([]SuggestionsPO, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	query := fmt.Sprintf(`SELECT CASE WHEN c.id_fk > 0 THEN c.id_fk ELSE '0' END AS id_fk, CASE WHEN c.item_to > 0 THEN c.item_to ELSE '0' END AS item_to, CASE WHEN b.nopo != '' THEN b.nopo ELSE '' END AS nopo, CASE WHEN b.type != '' THEN b.type ELSE '' END AS type, CASE WHEN c.detail != '' THEN GROUP_CONCAT(c.detail SEPARATOR ' - ') ELSE '' END AS detail, CASE WHEN d.isi != '' THEN d.isi ELSE '' END AS isi FROM po_customer AS b LEFT JOIN po_item AS c ON c.id_fk = b.id LEFT JOIN setting AS d ON d.id = b.type WHERE b.nopo LIKE '%%%s%%' GROUP BY c.id_fk ORDER BY b.id DESC;`, Keyword)
 	rows, err := sql.Connection.Query(query)
@@ -731,6 +749,9 @@ func GetVendor(Id int) ([]PurchaseOrder, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	query := fmt.Sprintf("SELECT a.vendor, b.id_vendor, b.id_company, b.nopo, b.po_date, b.note, b.type, b.ppn FROM vendor AS a LEFT JOIN po_customer AS b ON a.id = b.id_vendor WHERE b.id = %d LIMIT 1", Id)
 
@@ -779,6 +800,9 @@ func GetItem(Id int) ([]PoItem, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	query := fmt.Sprintf("SELECT a.id, a.detail, a.size, a.price_1, a.price_2, a.qty, a.unit, a.merk, a.type, a.core, a.gulungan, a.bahan, c.value FROM po_item AS a JOIN po_customer AS b ON b.id = a.id_fk JOIN setting AS c ON c.id = b.type WHERE a.id = %d LIMIT 1", Id)
 
@@ -840,6 +864,9 @@ func UpdateVendor(Sessionid string, Id int, Vendorid int, Companyid int, Podate 
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	query := fmt.Sprintf("SELECT nopo FROM po_customer WHERE id = '%d' LIMIT 1", Id)
 	if err = sql.Connection.QueryRow(query).Scan(&nopo); err != nil {
 		if err.Error() == `sql: no rows in result set` {
@@ -885,6 +912,9 @@ func UpdateItem(Sessionid string, Id int, Detail string, Size string, Price1 str
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	query_id := fmt.Sprintf("SELECT id FROM po_item WHERE id = '%d' LIMIT 1", Id)
 	rows_id, err := sql.Connection.Query(query_id)
@@ -942,6 +972,9 @@ func Create(Sessionid string, BodyReq []byte) ([]PurchaseOrder, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	queryAI := `SELECT AUTO_INCREMENT AS ai FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'po_customer'`
 	err = sql.Connection.QueryRow(queryAI).Scan(&AUTO_INCREMENT)
@@ -1066,6 +1099,9 @@ func AddItem(Sessionid string, BodyReq []byte) ([]PoItem, error) {
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	query := fmt.Sprintf(`SELECT COUNT(id) as item_total FROM po_item WHERE id_fk = %d`, Po.Fkid)
 	if err = sql.Connection.QueryRow(query).Scan(&item_total); err != nil {
 		item_total = 0
@@ -1121,6 +1157,9 @@ func Delete(Sessionid string, Id int) ([]PoItem, error) {
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	var id, fkid, sequence_item, detail, size, price1, price2, qty, unit, merk, itemtype, core, roll, material string
 	query := fmt.Sprintf(`SELECT id, id_fk, item_to, detail, size, price_1, price_2, qty, unit, merk, type, core, gulungan, bahan FROM po_item where id = %d`, Id)
 	if err := sql.Connection.QueryRow(query).Scan(&id, &fkid, &sequence_item, &detail, &size, &price1, &price2, &qty, &unit, &merk, &itemtype, &core, &roll, &material); err != nil {
@@ -1154,6 +1193,9 @@ func GetPrintView(Id int) ([]Print, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	query := fmt.Sprintf("SELECT a.vendor, a.address, b.id, b.po_date, b.nopo, b.note, b.ppn, c.id, c.detail, c.size, c.price_1, c.price_2, c.qty, c.unit, c.merk, c.type, c.core, c.gulungan, c.bahan, d.isi, d.value FROM vendor AS a JOIN po_customer AS b ON a.id = b.id_vendor JOIN (SELECT * FROM po_item WHERE hidden = 0) AS c ON b.id = c.id_fk JOIN setting AS d ON d.id = b.type WHERE b.id = %d", Id)
 
@@ -1259,6 +1301,9 @@ func GetPrintNow(Sessionid string, Id int) ([]Print, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	query := fmt.Sprintf("SELECT a.vendor, a.address, b.id, b.po_date, b.nopo, b.note, b.ppn, c.detail, c.size, c.price_1, c.price_2, c.qty, c.unit, c.id, c.item_to, d.company, d.address AS alamat, d.email, d.phone, d.logo, e.value FROM vendor AS a LEFT JOIN po_customer AS b ON a.id = b.id_vendor LEFT JOIN (SELECT * FROM po_item WHERE hidden = 0) AS c ON b.id = c.id_fk LEFT JOIN company AS d ON d.id = b.id_company LEFT JOIN setting AS e ON e.id = b.type WHERE b.id = %d", Id)
 

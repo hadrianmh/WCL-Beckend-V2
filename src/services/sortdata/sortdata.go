@@ -42,6 +42,9 @@ func GetArchive(ctx *gin.Context) ([]SortDataResponse, error) {
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	query := fmt.Sprintf(`SELECT DISTINCT %s FROM %s ORDER BY %s DESC`, strings.ToLower(Data), strings.ToLower(From), strings.ToLower(Data))
 	rows, err := sql.Connection.Query(query)
 	if err != nil {
@@ -118,6 +121,9 @@ func GetCounter(ctx *gin.Context) ([]SortDataResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	if strings.ToLower(TypeParam) == `periode` {
 		Querystr = fmt.Sprintf(`BETWEEN '%s' AND '%s'`, StartdateParam, EnddateParam)

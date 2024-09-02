@@ -67,6 +67,9 @@ func Notification(Sessionid string) (interface{}, error) {
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	var role, account, do_waiting_counter, do_duedate_counter, wo_waiting_counter, inv_waiting_counter, inv_duedate_counter int
 
 	query := fmt.Sprintf(`SELECT role, account FROM user WHERE id = %s`, Sessionid)
@@ -202,6 +205,9 @@ func SoTracking(ctx *gin.Context) ([]Datatables, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	query_datatables = fmt.Sprintf(`SELECT COUNT(b.id) as totalrows FROM preorder_item AS a LEFT JOIN preorder_customer AS b ON b.id_fk = a.id_fk LEFT JOIN preorder_price AS c ON c.id_fk = b.id_fk LEFT JOIN workorder_item AS d ON d.id_fk = a.id_fk AND d.item_to = a.item_to LEFT JOIN workorder_customer AS e ON e.id_fk = b.id_fk LEFT JOIN delivery_orders_item AS f ON f.id_fk = a.id_fk AND f.item_to = a.item_to LEFT JOIN delivery_orders_customer AS g ON g.id_fk = b.id_fk AND g.id_sj = f.id_sj LEFT JOIN status AS h ON h.id_fk = a.id_fk AND h.item_to = a.item_to LEFT JOIN company AS i ON i.id = b.id_company LEFT JOIN setting AS j ON j.id = d.detail WHERE b.po_date %s %s ORDER BY b.id, f.no_delivery ASC`, Report, search)
 	if err = sql.Connection.QueryRow(query_datatables).Scan(&totalrows); err != nil {
@@ -523,6 +529,9 @@ func Static(ctx *gin.Context) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	query1 := fmt.Sprintf(`SELECT count(id) AS po_total FROM preorder_customer WHERE po_date %s`, Report)
 	if err = sql.Connection.QueryRow(query1).Scan(&po_total); err != nil {

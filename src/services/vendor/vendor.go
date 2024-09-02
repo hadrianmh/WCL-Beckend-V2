@@ -58,6 +58,9 @@ func Get(ctx *gin.Context) (Response, error) {
 		return Response{}, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	id, err := strconv.Atoi(idParam)
 	if err != nil || id < 1 {
 		// datatables total rows and filtered handling
@@ -131,6 +134,9 @@ func Create(Sessionid string, VendorName string, Address string, Phone int, Inpu
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	query := fmt.Sprintf("SELECT id FROM vendor WHERE vendor = '%s' LIMIT 1", VendorName)
 	rows, err := sql.Connection.Query(query)
 	if err != nil {
@@ -167,6 +173,9 @@ func Update(Sessionid string, Id int, VendorName string, Address string, Phone i
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	query_id := fmt.Sprintf("SELECT id FROM vendor WHERE id = '%d' LIMIT 1", Id)
 	rows_id, err := sql.Connection.Query(query_id)
@@ -217,6 +226,10 @@ func Delete(Sessionid string, Id int) ([]Vendor, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	var vendor, address, phone string
 	query_id := fmt.Sprintf(`SELECT vendor, address, phone FROM vendor WHERE id = %d LIMIT 1`, Id)
 	if err = sql.Connection.QueryRow(query_id).Scan(&vendor, &address, &phone); err != nil {

@@ -173,6 +173,8 @@ func Get(ctx *gin.Context) (Response, error) {
 		return Response{}, err
 	}
 
+	defer sql.Connection.Close()
+
 	query_datatables = fmt.Sprintf(`SELECT COUNT(sub.count) AS totalrows FROM (SELECT
 	CASE WHEN a.no_delivery != '' THEN 1 END AS count
 	FROM
@@ -395,6 +397,9 @@ func Create(Sessionid string, Id string, Date string) ([]Datatables, error) {
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	// ambil podate dan no invoice pada tabel workorder_customer
 	query := `SELECT invoice_date, no_invoice FROM invoice ORDER BY id DESC LIMIT 1`
 	if err = sql.Connection.QueryRow(query).Scan(&invoice_date, &no_invoice); err != nil {
@@ -488,6 +493,9 @@ func Printview(Id int) ([]Datatables, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	query := fmt.Sprintf(`SELECT no_invoice FROM invoice WHERE id = %d`, Id)
 	if err = sql.Connection.QueryRow(query).Scan(&no_invoice); err != nil {
@@ -616,6 +624,9 @@ func Printnow(Sessionid string, BodyReq []byte) ([]Datatables, error) {
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	// ambil id_fk pada tabel workorder_customer
 	var duration, logo, email string
 	query := fmt.Sprintf(`SELECT a.duration, c.logo, c.email FROM invoice AS a LEFT JOIN preorder_customer AS b ON b.id_fk = a.id_fk LEFT JOIN company AS c ON c.id = b.id_company WHERE a.id = '%s' LIMIT 1`, data.Id)
@@ -722,6 +733,9 @@ func Paid(Sessionid string, id string, date string, note string) ([]Datatables, 
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	query := fmt.Sprintf(`SELECT a.invoice_date, a.no_invoice, b.customer, GROUP_CONCAT(DISTINCT c.no_delivery SEPARATOR ', ') AS no_delivery FROM invoice AS a LEFT JOIN preorder_customer AS b ON b.id_fk = a.id_fk LEFT JOIN delivery_orders_item AS c ON c.id_fk = a.id_fk AND c.id_sj = a.id_sj WHERE a.id = '%s' GROUP BY a.no_invoice`, id)
 	if err := sql.Connection.QueryRow(query).Scan(&invoice_date, &no_invoice, &customername, &no_delivery); err != nil {
 		if err.Error() == `sql: no rows in result set` {
@@ -757,6 +771,9 @@ func UnPaid(Sessionid string, id string) ([]Datatables, error) {
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	query := fmt.Sprintf(`SELECT a.invoice_date, a.no_invoice, b.customer, GROUP_CONCAT(DISTINCT c.no_delivery SEPARATOR ', ') AS no_delivery FROM invoice AS a LEFT JOIN preorder_customer AS b ON b.id_fk = a.id_fk LEFT JOIN delivery_orders_item AS c ON c.id_fk = a.id_fk AND c.id_sj = a.id_sj WHERE a.id = '%s' GROUP BY a.no_invoice`, id)
 	if err := sql.Connection.QueryRow(query).Scan(&invoice_date, &no_invoice, &customername, &no_delivery); err != nil {
 		if err.Error() == `sql: no rows in result set` {
@@ -791,6 +808,9 @@ func Delete(Sessionid string, id int) ([]Datatables, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	query := fmt.Sprintf(`SELECT no_invoice FROM invoice WHERE id = %d`, id)
 	if err := sql.Connection.QueryRow(query).Scan(&no_invoice); err != nil {

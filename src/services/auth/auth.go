@@ -71,6 +71,8 @@ func Login(email string, password string, refresh_token string) *ResponseRequset
 		return jsonResp
 	}
 
+	defer sql.Connection.Close()
+
 	query := fmt.Sprintf("SELECT id, name, email, role, status, account, picture FROM user WHERE email='%s' AND password=md5('%s') LIMIT 1", email, password)
 	rows, err := sql.Connection.Query(query)
 	if err != nil {
@@ -184,6 +186,8 @@ func Refresh(email string, password string, refresh_token string) *ResponseRequs
 		}
 		return jsonResp
 	}
+
+	defer sql.Connection.Close()
 
 	query := fmt.Sprintf("SELECT id, name, email, role, status, account, picture FROM user WHERE id='%s' LIMIT 1", userid)
 	rows, err := sql.Connection.Query(query)

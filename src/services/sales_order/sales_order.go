@@ -214,6 +214,9 @@ func Get(ctx *gin.Context) (Response, error) {
 		return Response{}, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	query_datatables = fmt.Sprintf(`SELECT
 	COUNT(a.id) as totalrows FROM preorder_item AS a
 	LEFT JOIN
@@ -454,6 +457,9 @@ func Create(Sessionid string, BodyReq []byte) ([]Preorder, error) {
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	queryFkid := `SELECT id_fk FROM preorder_customer ORDER BY id DESC LIMIT 1`
 	if err = sql.Connection.QueryRow(queryFkid).Scan(&fkId); err != nil {
 		id_fk = 0 //set default data null
@@ -608,6 +614,9 @@ func AddItem(Sessionid string, BodyReq []byte) ([]Preorder, error) {
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	querySoNumber := `SELECT no_so FROM workorder_item ORDER BY id DESC LIMIT 1`
 	if err = sql.Connection.QueryRow(querySoNumber).Scan(&soNumber); err != nil {
 		soNumber = `WSO/1807/001` //set default data null
@@ -723,6 +732,9 @@ func GetCustomer(Id int) ([]Preorder, error) {
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	query := fmt.Sprintf("SELECT a.id AS so_cusid, a.id_company as companyid, a.id_customer AS customerid, a.id_fk, a.customer, a.po_date, a.po_customer, a.order_grade, a.input_by, b.id AS so_priceid, b.ppn, c.company FROM preorder_customer AS a LEFT JOIN preorder_price AS b ON a.id_fk = b.id_fk LEFT JOIN company AS c ON a.id_company = c.id WHERE a.id = %d LIMIT 1", Id)
 
 	rows, err := sql.Connection.Query(query)
@@ -769,6 +781,9 @@ func GetItem(Id int) ([]PreorderItem, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	query := fmt.Sprintf("SELECT a.id as po_itemid, a.id_fk, a.item_to, a.detail, a.item, a.size, a.price, a.qty, a.unit, a.input_by, b.id AS wo_itemid, b.qore, b.lin, b.roll, b.ingredient, b.volume, b.annotation, b.porporasi, b.uk_bahan_baku, b.qty_bahan_baku, b.sources, b.detail, b.type, b.merk FROM preorder_item AS a LEFT JOIN workorder_item AS b ON a.id_fk = b.id_fk AND a.item_to = b.item_to WHERE a.id = %d LIMIT 1", Id)
 
@@ -830,6 +845,9 @@ func UpdateCustomer(Sessionid string, Id int, companyid int, customerid int, cus
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	query_id := fmt.Sprintf("SELECT id_fk FROM preorder_customer WHERE id = '%d' LIMIT 1", Id)
 	if err = sql.Connection.QueryRow(query_id).Scan(&id_fk); err != nil {
@@ -897,6 +915,9 @@ func UpdateItem(Sessionid string, poitemid int, woitemid int, item string, size 
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	query_id := fmt.Sprintf("SELECT id_fk FROM preorder_item WHERE id = %d LIMIT 1", poitemid)
 	if err = sql.Connection.QueryRow(query_id).Scan(&id_fk); err != nil {
@@ -1004,6 +1025,9 @@ func GetShippingCost(Id int) ([]PreorderShippingCost, error) {
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	query := fmt.Sprintf(`SELECT a.id, a.courier, a.no_tracking, a.cost, a.ekspedisi, a.uom, a.jml, b.no_delivery, b.send_qty FROM delivery_orders_customer AS a LEFT JOIN (SELECT id_fk, no_delivery, send_qty FROM delivery_orders_item WHERE id_fk = %d GROUP BY no_delivery) AS b ON a.id_fk = b.id_fk WHERE a.id_fk = %d GROUP BY a.id ORDER BY b.no_delivery ASC;`, Id, Id)
 
 	rows, err := sql.Connection.Query(query)
@@ -1065,6 +1089,9 @@ func UpdateShipCost(Sessionid string, Id int, cost string, ekspedisi string, uom
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	query2 := fmt.Sprintf(`UPDATE delivery_orders_customer SET cost = '%s', ekspedisi = '%s', uom = '%s', jml = '%s' WHERE id = %d`, strings.ReplaceAll(cost, `.`, ``), ekspedisi, uom, jml, Id)
 	if _, err := sql.Connection.Query(query2); err != nil {
 		return nil, fmt.Errorf("[err] %s", err)
@@ -1088,6 +1115,9 @@ func Delete(Sessionid string, Id int) ([]PreorderItem, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	// Ambil id_fk dan item_to dari tabel PO_item
 	query_id := fmt.Sprintf("SELECT id_fk, item_to FROM preorder_item WHERE id = %d LIMIT 1", Id)
@@ -1271,6 +1301,9 @@ func SuggestType(ctx *gin.Context) ([]SuggestionsType, error) {
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	query := `SELECT id, isi FROM setting WHERE ket ='SO_ITEM'`
 	rows, err := sql.Connection.Query(query)
 	if err != nil {
@@ -1308,6 +1341,9 @@ func SuggestCustomer(ctx *gin.Context) ([]SuggestionsCustomer, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	query := fmt.Sprintf(`SELECT a.id AS id_customer, a.nama, CASE WHEN b.po_customer IS NOT NULL THEN b.po_customer ELSE '' END AS po_customer, CASE WHEN b.id IS NOT NULL THEN b.id ELSE '' END AS id_po, CASE WHEN b.id_fk > 0 THEN b.id_fk ELSE 0 END AS id_fk, CASE WHEN c.item IS NOT NULL THEN GROUP_CONCAT(c.item SEPARATOR ' - ') ELSE '' END AS item FROM customer AS a LEFT JOIN preorder_customer AS b ON a.id = b.id_customer LEFT JOIN preorder_item AS c ON c.id_fk = b.id_fk WHERE a.nama LIKE '%%%s%%' GROUP BY b.id_fk ORDER BY b.id DESC`, Keyword)
 	rows, err := sql.Connection.Query(query)
@@ -1441,6 +1477,9 @@ func SuggestItem(ctx *gin.Context) ([]SuggestionsItem, error) {
 			return nil, err
 		}
 
+		// Ensure the database connection is closed after all operations
+		defer sql.Connection.Close()
+
 		query := fmt.Sprintf(`SELECT c.item_to, CASE WHEN c.price > 0 THEN c.price ELSE 0 END AS price, d.item, d.size, d.unit, d.qore, d.lin, d.roll, d.ingredient, d.qty, d.volume, d.annotation, d.porporasi, d.uk_bahan_baku, d.qty_bahan_baku, d.detail, d.merk, d.type FROM customer AS a LEFT JOIN preorder_customer AS b ON a.id = b.id_customer LEFT JOIN preorder_item AS c ON c.id_fk = b.id_fk LEFT JOIN workorder_item AS d ON d.id_fk = c.id_fk AND d.item_to = c.item_to WHERE a.id = %d AND b.id = %d`, customerid, poid)
 
 		rows, err := sql.Connection.Query(query)
@@ -1515,6 +1554,9 @@ func SuggestAttr(ctx *gin.Context) (interface{}, error) {
 		return nil, err
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	var isi, value string
 	query := fmt.Sprintf(`SELECT isi, value FROM setting WHERE id = %d`, IdInt)
 	err = sql.Connection.QueryRow(query).Scan(&isi, &value)
@@ -1555,6 +1597,9 @@ func SuggestSO(ctx *gin.Context) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
 
 	var value string
 	query := fmt.Sprintf(`SELECT value FROM setting WHERE id = %d`, IdInt)

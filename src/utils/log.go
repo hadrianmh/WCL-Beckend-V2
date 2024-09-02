@@ -18,6 +18,9 @@ func Capture(action string, data string, userid string) (string, error) {
 		return "", fmt.Errorf("[createlog error2] %s", err)
 	}
 
+	// Ensure the database connection is closed after all operations
+	defer sql.Connection.Close()
+
 	// Get user name
 	var id, name string
 	query_user := fmt.Sprintf(`SELECT id, name FROM user WHERE id = '%s' LIMIT 1`, userid)

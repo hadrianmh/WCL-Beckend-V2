@@ -138,6 +138,8 @@ func Get(ctx *gin.Context) (Response, error) {
 		return Response{}, err
 	}
 
+	defer sql.Connection.Close()
+
 	query_datatables = fmt.Sprintf(`SELECT COUNT(sub.count) AS totalrows FROM (SELECT
 		CASE WHEN a.id > 0 THEN 1 END AS count
 		FROM
@@ -306,6 +308,8 @@ func GetWaiting(ctx *gin.Context) (Response, error) {
 		return Response{}, err
 	}
 
+	defer sql.Connection.Close()
+
 	query_datatables = fmt.Sprintf(`
 	SELECT COUNT(sub.count) AS totalrows FROM (SELECT
 		CASE WHEN a.id > 0 THEN 1 END AS count
@@ -411,6 +415,8 @@ func GetItem(Id int) ([]DeliveryOrders, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	defer sql.Connection.Close()
 
 	query := fmt.Sprintf(`SELECT
 	a.spk_date,
@@ -563,6 +569,8 @@ func GetNumber() ([]DeliveryOrders, error) {
 		return nil, fmt.Errorf("[err1] %s", err)
 	}
 
+	defer sql.Connection.Close()
+
 	// ambil tanggal surat jalan terakhir pada tabel delivery_orders_customer
 	var id_sj int
 	var sj_date string
@@ -646,6 +654,8 @@ func Create(Sessionid string, BodyReq []byte) ([]DeliveryOrders, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	defer sql.Connection.Close()
 
 	// ambil id_fk pada tabel workorder_customer
 	query := fmt.Sprintf("SELECT id_fk FROM workorder_customer WHERE id = '%d' LIMIT 1", deliveryorder.Id)
@@ -751,6 +761,8 @@ func Delete(Id int) ([]DeliveryOrders, error) {
 		return nil, err
 	}
 
+	defer sql.Connection.Close()
+
 	// Mencari id_fk, id_sj, item_to
 	query := fmt.Sprintf(`SELECT id_fk, id_sj, item_to FROM delivery_orders_item WHERE id = %d`, Id)
 	if err = sql.Connection.QueryRow(query).Scan(&id_fk, &id_sj, &sequence_item); err != nil {
@@ -812,13 +824,15 @@ func Printview(Id int) ([]DeliveryOrders, error) {
 		return nil, err
 	}
 
+	defer sql.Connection.Close()
+
 	// Mencari id_fk, id_sj, item_to
 	query := fmt.Sprintf(`SELECT id_fk, no_delivery, item_to FROM delivery_orders_item WHERE id = %d`, Id)
 	if err = sql.Connection.QueryRow(query).Scan(&id_fk, &no_delivery, &sequence_item); err != nil {
 		return nil, err
 	}
 
-	query = fmt.Sprintf(`SELECT a.no_delivery, a.send_qty, b.shipto, b.sj_date, c.customer, c.po_customer, e.item, e.unit, e.ingredient, e.size, e.volume FROM delivery_orders_item AS a LEFT JOIN delivery_orders_customer AS b ON a.id_fk = b.id_fk AND a.id_sj = b.id_sj LEFT JOIN workorder_customer AS c ON a.id_fk = c.id_fk LEFT JOIN workorder_item AS e ON a.id_fk = e.id_fk AND a.item_to = e.item_to WHERE a.id_fk = %d AND a.no_delivery = '%s'`, id_fk, no_delivery)
+	query = fmt.Sprintf(`SELECT a.no_delivery, a.send_qty, b.shipto, b.sj_date, c.customer, c.po_customer, e.item, e.unit, e.ingredient, e.size, e.volume, f.name FROM delivery_orders_item AS a LEFT JOIN delivery_orders_customer AS b ON a.id_fk = b.id_fk AND a.id_sj = b.id_sj LEFT JOIN workorder_customer AS c ON a.id_fk = c.id_fk LEFT JOIN workorder_item AS e ON a.id_fk = e.id_fk AND a.item_to = e.item_to LEFT JOIN user AS f ON b.input_by = f.id WHERE a.id_fk = %d AND a.no_delivery = '%s'`, id_fk, no_delivery)
 
 	rows, err := sql.Connection.Query(query)
 	if err != nil {
@@ -829,9 +843,9 @@ func Printview(Id int) ([]DeliveryOrders, error) {
 	deliveryorder := []DeliveryOrders{}
 	for rows.Next() {
 		var send_qty int64
-		var no_sj, shipto, sj_date, customername, nopocustomer, item, unit, material, size, volume string
+		var no_sj, shipto, sj_date, customername, nopocustomer, item, unit, material, size, volume, ttd string
 
-		if err := rows.Scan(&no_sj, &send_qty, &shipto, &sj_date, &customername, &nopocustomer, &item, &unit, &material, &size, &volume); err != nil {
+		if err := rows.Scan(&no_sj, &send_qty, &shipto, &sj_date, &customername, &nopocustomer, &item, &unit, &material, &size, &volume, &ttd); err != nil {
 			return nil, err
 		}
 
@@ -846,6 +860,7 @@ func Printview(Id int) ([]DeliveryOrders, error) {
 			Item:         ItemUpperStr,
 			Qty:          send_qty,
 			Unit:         unit,
+			Ttd:          ttd,
 		})
 	}
 
@@ -871,13 +886,15 @@ func Printnow(Id int, ttd string) ([]DeliveryOrders, error) {
 		return nil, err
 	}
 
+	defer sql.Connection.Close()
+
 	// Mencari id_fk, id_sj, item_to
 	query := fmt.Sprintf(`SELECT id_fk, no_delivery, item_to FROM delivery_orders_item WHERE id = %d`, Id)
 	if err = sql.Connection.QueryRow(query).Scan(&id_fk, &no_delivery, &sequence_item); err != nil {
 		return nil, err
 	}
 
-	query = fmt.Sprintf(`SELECT a.no_so, a.item, a.unit, a.ingredient, a.size, a.volume, b.send_qty, d.company, d.address, d.logo, d.phone, e.shipto, e.sj_date, c.po_customer, b.no_delivery, c.customer, f.name FROM workorder_item AS a LEFT JOIN delivery_orders_item AS b ON b.id_fk = a.id_fk AND b.item_to = a.item_to LEFT JOIN preorder_customer AS c ON c.id_fk = %d LEFT JOIN company AS d ON d.id = c.id_company LEFT JOIN delivery_orders_customer AS e ON a.id_fk = e.id_fk AND b.id_sj = e.id_sj LEFT JOIN user AS f ON c.input_by = f.id WHERE a.id_fk = %d AND b.no_delivery = '%s' GROUP BY a.id;`, id_fk, id_fk, no_delivery)
+	query = fmt.Sprintf(`SELECT a.no_so, a.item, a.unit, a.ingredient, a.size, a.volume, b.send_qty, d.company, d.address, d.logo, d.phone, e.shipto, e.sj_date, c.po_customer, b.no_delivery, c.customer, f.name FROM workorder_item AS a LEFT JOIN delivery_orders_item AS b ON b.id_fk = a.id_fk AND b.item_to = a.item_to LEFT JOIN preorder_customer AS c ON c.id_fk = %d LEFT JOIN company AS d ON d.id = c.id_company LEFT JOIN delivery_orders_customer AS e ON a.id_fk = e.id_fk AND b.id_sj = e.id_sj LEFT JOIN user AS f ON e.input_by = f.id WHERE a.id_fk = %d AND b.no_delivery = '%s' GROUP BY a.id;`, id_fk, id_fk, no_delivery)
 
 	rows, err := sql.Connection.Query(query)
 	if err != nil {
