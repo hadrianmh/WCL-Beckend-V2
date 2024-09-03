@@ -130,7 +130,17 @@ func Get(ctx *gin.Context) (Response, error) {
 
 	// datatables total rows and filtered handling
 	if SearchValue != "" {
-		search = fmt.Sprintf(`AND (a.no_delivery LIKE '%%%s%%' OR a.send_qty LIKE '%%%s%%' OR c.sj_date LIKE '%%%s%%' OR c.shipto LIKE '%%%s%%' OR c.courier LIKE '%%%s%%' OR c.no_tracking LIKE '%%%s%%' OR c.cost LIKE '%%%s%%' OR d.customer LIKE '%%%s%%' OR d.po_customer LIKE '%%%s%%' OR e.no_so LIKE '%%%s%%' OR e.item LIKE '%%%s%%' OR e.unit LIKE '%%%s%%' OR f.name LIKE '%%%s%%')`, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue)
+		wso := SearchValue // wso search spesific
+		if strings.Contains(strings.ToLower(SearchValue), config.App.PrefixSearch_wso) {
+			trimPrefix := strings.TrimPrefix(strings.ToLower(SearchValue), config.App.PrefixSearch_wso)
+			if len(trimPrefix) < 4 {
+				wso = config.App.PrefixSearch_wso + trimPrefix
+			} else {
+				wso = config.App.PrefixSearch_wso + trimPrefix[:4] + "/" + trimPrefix[4:]
+			}
+		}
+
+		search = fmt.Sprintf(`AND (a.no_delivery LIKE '%%%s%%' OR a.send_qty LIKE '%%%s%%' OR c.sj_date LIKE '%%%s%%' OR c.shipto LIKE '%%%s%%' OR c.courier LIKE '%%%s%%' OR c.no_tracking LIKE '%%%s%%' OR c.cost LIKE '%%%s%%' OR d.customer LIKE '%%%s%%' OR d.po_customer LIKE '%%%s%%' OR e.no_so LIKE '%%%s%%' OR e.item LIKE '%%%s%%' OR e.unit LIKE '%%%s%%' OR f.name LIKE '%%%s%%')`, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, wso, SearchValue, SearchValue, SearchValue)
 	}
 
 	sql, err := adapters.NewSql()

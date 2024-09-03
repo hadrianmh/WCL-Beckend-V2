@@ -27,6 +27,7 @@ type AppConfig struct {
 	DateFormat_Day           string `json:"dateformat_day"`
 	DateFormat_MonthlyReport string `json:"dateformat_monthlyreport"`
 	UploadPath               string `json:"upload_path"`
+	PrefixSearch_wso         string `json:"prefix_search_wso"`
 }
 
 type DatabaseConfig struct {

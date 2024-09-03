@@ -144,7 +144,17 @@ func Get(ctx *gin.Context) (Response, error) {
 	}
 
 	if SearchValue != "" {
-		search = fmt.Sprintf(`AND (a.po_date LIKE '%%%s%%' OR a.spk_date LIKE '%%%s%%' OR a.duration LIKE '%%%s%%' OR a.po_customer LIKE '%%%s%%' OR a.customer LIKE '%%%s%%' OR b.no_so LIKE '%%%s%%' OR b.item LIKE '%%%s%%' OR b.size LIKE '%%%s%%' OR b.unit LIKE '%%%s%%' OR b.qore LIKE '%%%s%%' OR b.lin LIKE '%%%s%%' OR b.roll LIKE '%%%s%%' OR b.ingredient LIKE '%%%s%%' OR b.qty LIKE '%%%s%%' OR b.volume LIKE '%%%s%%' OR b.total LIKE '%%%s%%' OR b.annotation LIKE '%%%s%%' OR b.uk_bahan_baku LIKE '%%%s%%' OR b.qty_bahan_baku LIKE '%%%s%%' OR b.sources LIKE '%%%s%%' OR b.merk LIKE '%%%s%%' OR b.type LIKE '%%%s%%')`, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue)
+		wso := SearchValue // wso search spesific
+		if strings.Contains(strings.ToLower(SearchValue), config.App.PrefixSearch_wso) {
+			trimPrefix := strings.TrimPrefix(strings.ToLower(SearchValue), config.App.PrefixSearch_wso)
+			if len(trimPrefix) < 4 {
+				wso = config.App.PrefixSearch_wso + trimPrefix
+			} else {
+				wso = config.App.PrefixSearch_wso + trimPrefix[:4] + "/" + trimPrefix[4:]
+			}
+		}
+
+		search = fmt.Sprintf(`AND (a.po_date LIKE '%%%s%%' OR a.spk_date LIKE '%%%s%%' OR a.duration LIKE '%%%s%%' OR a.po_customer LIKE '%%%s%%' OR a.customer LIKE '%%%s%%' OR b.no_so LIKE '%%%s%%' OR b.item LIKE '%%%s%%' OR b.size LIKE '%%%s%%' OR b.unit LIKE '%%%s%%' OR b.qore LIKE '%%%s%%' OR b.lin LIKE '%%%s%%' OR b.roll LIKE '%%%s%%' OR b.ingredient LIKE '%%%s%%' OR b.qty LIKE '%%%s%%' OR b.volume LIKE '%%%s%%' OR b.total LIKE '%%%s%%' OR b.annotation LIKE '%%%s%%' OR b.uk_bahan_baku LIKE '%%%s%%' OR b.qty_bahan_baku LIKE '%%%s%%' OR b.sources LIKE '%%%s%%' OR b.merk LIKE '%%%s%%' OR b.type LIKE '%%%s%%')`, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, wso, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue)
 	}
 
 	sql, err := adapters.NewSql()

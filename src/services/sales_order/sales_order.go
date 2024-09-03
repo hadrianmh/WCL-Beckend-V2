@@ -206,7 +206,17 @@ func Get(ctx *gin.Context) (Response, error) {
 
 	// datatables total rows and filtered handling
 	if SearchValue != "" {
-		search = fmt.Sprintf(`AND (a.detail LIKE '%%%s%%' OR a.item LIKE '%%%s%%' OR a.size LIKE '%%%s%%' OR a.price LIKE '%%%s%%' OR a.qty LIKE '%%%s%%' OR a.unit LIKE '%%%s%%' OR b.customer LIKE '%%%s%%' OR b.po_date LIKE '%%%s%%' OR b.po_customer LIKE '%%%s%%' OR c.no_so LIKE '%%%s%%' OR c.qore LIKE '%%%s%%' OR c.lin LIKE '%%%s%%' OR c.roll LIKE '%%%s%%' OR c.ingredient LIKE '%%%s%%' OR c.volume LIKE '%%%s%%' OR c.annotation LIKE '%%%s%%' OR c.uk_bahan_baku LIKE '%%%s%%' OR c.qty_bahan_baku LIKE '%%%s%%' OR c.merk LIKE '%%%s%%')`, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue)
+		wso := SearchValue // wso search spesific
+		if strings.Contains(strings.ToLower(SearchValue), config.App.PrefixSearch_wso) {
+			trimPrefix := strings.TrimPrefix(strings.ToLower(SearchValue), config.App.PrefixSearch_wso)
+			if len(trimPrefix) < 4 {
+				wso = config.App.PrefixSearch_wso + trimPrefix
+			} else {
+				wso = config.App.PrefixSearch_wso + trimPrefix[:4] + "/" + trimPrefix[4:]
+			}
+		}
+
+		search = fmt.Sprintf(`AND (a.detail LIKE '%%%s%%' OR a.item LIKE '%%%s%%' OR a.size LIKE '%%%s%%' OR a.price LIKE '%%%s%%' OR a.qty LIKE '%%%s%%' OR a.unit LIKE '%%%s%%' OR b.customer LIKE '%%%s%%' OR b.po_date LIKE '%%%s%%' OR b.po_customer LIKE '%%%s%%' OR c.no_so LIKE '%%%s%%' OR c.qore LIKE '%%%s%%' OR c.lin LIKE '%%%s%%' OR c.roll LIKE '%%%s%%' OR c.ingredient LIKE '%%%s%%' OR c.volume LIKE '%%%s%%' OR c.annotation LIKE '%%%s%%' OR c.uk_bahan_baku LIKE '%%%s%%' OR c.qty_bahan_baku LIKE '%%%s%%' OR c.merk LIKE '%%%s%%')`, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, wso, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue)
 	}
 
 	sql, err := adapters.NewSql()

@@ -165,7 +165,17 @@ func Get(ctx *gin.Context) (Response, error) {
 	}
 
 	if SearchValue != "" {
-		search = fmt.Sprintf(`AND (a.no_delivery LIKE '%%%s%%' OR a.send_qty LIKE '%%%s%%' OR b.no_invoice LIKE '%%%s%%' OR b.invoice_date LIKE '%%%s%%' OR b.duration LIKE '%%%s%%' OR b.note LIKE '%%%s%%' OR c.price LIKE '%%%s%%' OR c.unit LIKE '%%%s%%' OR d.no_so LIKE '%%%s%%' OR e.customer LIKE '%%%s%%' OR e.po_customer LIKE '%%%s%%' OR f.sj_date LIKE '%%%s%%' OR f.cost LIKE '%%%s%%' OR f.ekspedisi LIKE '%%%s%%' OR f.uom LIKE '%%%s%%' OR f.jml LIKE '%%%s%%' OR i.name LIKE '%%%s%%')`, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue)
+		wso := SearchValue // wso search spesific
+		if strings.Contains(strings.ToLower(SearchValue), config.App.PrefixSearch_wso) {
+			trimPrefix := strings.TrimPrefix(strings.ToLower(SearchValue), config.App.PrefixSearch_wso)
+			if len(trimPrefix) < 4 {
+				wso = config.App.PrefixSearch_wso + trimPrefix
+			} else {
+				wso = config.App.PrefixSearch_wso + trimPrefix[:4] + "/" + trimPrefix[4:]
+			}
+		}
+
+		search = fmt.Sprintf(`AND (a.no_delivery LIKE '%%%s%%' OR a.send_qty LIKE '%%%s%%' OR b.no_invoice LIKE '%%%s%%' OR b.invoice_date LIKE '%%%s%%' OR b.duration LIKE '%%%s%%' OR b.note LIKE '%%%s%%' OR c.price LIKE '%%%s%%' OR c.unit LIKE '%%%s%%' OR d.no_so LIKE '%%%s%%' OR e.customer LIKE '%%%s%%' OR e.po_customer LIKE '%%%s%%' OR f.sj_date LIKE '%%%s%%' OR f.cost LIKE '%%%s%%' OR f.ekspedisi LIKE '%%%s%%' OR f.uom LIKE '%%%s%%' OR f.jml LIKE '%%%s%%' OR i.name LIKE '%%%s%%')`, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, wso, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue, SearchValue)
 	}
 
 	sql, err := adapters.NewSql()
